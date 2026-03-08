@@ -1,9 +1,26 @@
-import { useState } from 'react'
-import { exportAllData, importData } from '../db/db'
+import { useState, useEffect } from 'react'
+import { exportAllData, importData, getProfile, setProfile } from '../db/db'
 
 export default function SettingsView({ onDataChange }) {
   const [importing, setImporting] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [profile, setProfileState] = useState({ name: '', birthdate: '', sex: 'male', smoking: false })
+  const [profileSaved, setProfileSaved] = useState(false)
+
+  useEffect(() => {
+    getProfile('patientProfile').then(p => {
+      if (p) setProfileState(p)
+    })
+  }, [])
+
+  async function handleProfileSave(e) {
+    e.preventDefault()
+    await setProfile('patientProfile', profile)
+    setProfileSaved(true)
+    setMsg('Profil sparad!')
+    setTimeout(() => { setMsg(null); setProfileSaved(false) }, 3000)
+    onDataChange?.()
+  }
 
   async function handleExport() {
     const data = await exportAllData()
@@ -26,6 +43,9 @@ export default function SettingsView({ onDataChange }) {
       const text = await file.text()
       const data = JSON.parse(text)
       await importData(data)
+      // Reload profile after import
+      const p = await getProfile('patientProfile')
+      if (p) setProfileState(p)
       setMsg('Data importerad!')
       onDataChange?.()
     } catch {
@@ -37,9 +57,57 @@ export default function SettingsView({ onDataChange }) {
 
   return (
     <div className="view-content">
+      {/* Patient profile */}
       <div className="card">
-        <h2 className="card-title">Inställningar & Data</h2>
-        <p className="card-desc">All data lagras lokalt på din enhet. Ingen data skickas till någon server.</p>
+        <h2 className="card-title">Min profil</h2>
+        <p className="card-desc">Används för automatisk beräkning av hjärt-kärlrisk (SCORE2).</p>
+        <form onSubmit={handleProfileSave} className="med-form" style={{ marginTop: 12 }}>
+          <div className="form-group">
+            <label>Namn</label>
+            <input
+              type="text"
+              value={profile.name}
+              onChange={e => setProfileState(p => ({ ...p, name: e.target.value }))}
+              placeholder="För- och efternamn"
+              className="form-input"
+            />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Födelsedatum</label>
+              <input
+                type="date"
+                value={profile.birthdate}
+                onChange={e => setProfileState(p => ({ ...p, birthdate: e.target.value }))}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Kön</label>
+              <select
+                value={profile.sex}
+                onChange={e => setProfileState(p => ({ ...p, sex: e.target.value }))}
+                className="form-input"
+              >
+                <option value="male">Man</option>
+                <option value="female">Kvinna</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={profile.smoking || false}
+                onChange={e => setProfileState(p => ({ ...p, smoking: e.target.checked }))}
+              />
+              Rökare (aktuell)
+            </label>
+          </div>
+          <button type="submit" className={`btn-primary ${profileSaved ? 'btn-saved' : ''}`}>
+            {profileSaved ? '✓ Sparad' : 'Spara profil'}
+          </button>
+        </form>
       </div>
 
       <div className="card">

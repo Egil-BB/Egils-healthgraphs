@@ -1,215 +1,184 @@
 import { useState, useEffect } from 'react'
-import { getProfile, setProfile, getAllLabs, getAllMeasurements } from '../db/db'
+import { getProfile, getAllLabs, getAllMeasurements } from '../db/db'
 import { calculateScore2, calculateRiskScenarios, LAB_TYPES } from '../utils/score2'
 import { getDailyAverages } from '../utils/bp'
 
+function calculateAge(birthdate) {
+  const today = new Date()
+  const birth = new Date(birthdate)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
+
 export default function ScoreView() {
-  const [form, setForm] = useState({
-    age: '',
-    sex: 'male',
-    smoking: false,
-    sbp: '',
-    totalCholesterol: '',
-    hdl: ''
-  })
-  const [result, setResult] = useState(null)
-  const [scenarios, setScenarios] = useState(null)
+  const [patientName, setPatientName] = useState('')
+  const [autoResult, setAutoResult] = useState(null)
+  const [autoScenarios, setAutoScenarios] = useState(null)
   const [autoFilled, setAutoFilled] = useState([])
+  const [missing, setMissing] = useState([])
+  const [autoParams, setAutoParams] = useState(null)
 
   useEffect(() => {
     async function load() {
-      const saved = await getProfile('score2params')
-      const labs = await getAllLabs()
-      const measurements = await getAllMeasurements()
+      const [savedProfile, labs, measurements] = await Promise.all([
+        getProfile('patientProfile'),
+        getAllLabs(),
+        getAllMeasurements()
+      ])
 
-      let newForm = saved ? { ...form, ...saved } : { ...form }
+      const params = {}
       const filled = []
+      const miss = []
 
-      // Auto-fill SBP from 14-day average
+      // Name
+      if (savedProfile?.name) setPatientName(savedProfile.name)
+
+      // Age from birthdate
+      if (savedProfile?.birthdate) {
+        const age = calculateAge(savedProfile.birthdate)
+        if (age >= 40 && age <= 79) {
+          params.age = age
+          filled.push(`Ålder: ${age} år (beräknat från ${savedProfile.birthdate})`)
+        } else if (age < 40) {
+          miss.push('Ålder under 40 – SCORE2 gäller 40–79 år')
+        } else {
+          miss.push('Ålder över 79 – SCORE2 gäller 40–79 år')
+        }
+      } else {
+        miss.push('Födelsedatum (ange i Inställningar)')
+      }
+
+      // Sex
+      if (savedProfile?.sex) {
+        params.sex = savedProfile.sex
+        filled.push(`Kön: ${savedProfile.sex === 'male' ? 'Man' : 'Kvinna'}`)
+      } else {
+        miss.push('Kön (ange i Inställningar)')
+      }
+
+      // Smoking
+      params.smoking = savedProfile?.smoking || false
+      filled.push(`Rökare: ${params.smoking ? 'Ja' : 'Nej'} (ändras i Inställningar)`)
+
+      // SBP from 14-day average
       if (measurements.length > 0) {
         const sorted = [...measurements].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
         const daily = getDailyAverages(sorted)
         const recent14 = daily.slice(-14)
         if (recent14.length > 0) {
           const avgSys = Math.round(recent14.reduce((s, d) => s + d.avgSys, 0) / recent14.length)
-          newForm.sbp = String(avgSys)
-          filled.push(`SBP (${avgSys} mmHg – 14-dagarssnitt)`)
+          params.sbp = avgSys
+          filled.push(`Systoliskt BT: ${avgSys} mmHg (14-dagarssnitt)`)
         }
+      } else {
+        miss.push('Blodtrycksmätningar (registrera i Mätvärden)')
       }
 
-      // Auto-fill from latest labs
-      const latestTotal = labs.filter(l => l.type === 'totalCholesterol').sort((a, b) => b.date.localeCompare(a.date))[0]
-      const latestHdl = labs.filter(l => l.type === 'hdl').sort((a, b) => b.date.localeCompare(a.date))[0]
-
+      // Total cholesterol from latest lab
+      const latestTotal = labs
+        .filter(l => l.type === 'totalCholesterol')
+        .sort((a, b) => b.date.localeCompare(a.date))[0]
       if (latestTotal) {
-        newForm.totalCholesterol = String(latestTotal.value)
-        filled.push(`Totalkolesterol (${latestTotal.value} mmol/L från ${latestTotal.date})`)
-      }
-      if (latestHdl) {
-        newForm.hdl = String(latestHdl.value)
-        filled.push(`HDL (${latestHdl.value} mmol/L från ${latestHdl.date})`)
+        params.totalCholesterol = latestTotal.value
+        filled.push(`Totalkolesterol: ${latestTotal.value} mmol/L (${latestTotal.date})`)
+      } else {
+        miss.push('Totalkolesterol (lägg in under Provsvar)')
       }
 
-      setForm(newForm)
+      // HDL from latest lab
+      const latestHdl = labs
+        .filter(l => l.type === 'hdl')
+        .sort((a, b) => b.date.localeCompare(a.date))[0]
+      if (latestHdl) {
+        params.hdl = latestHdl.value
+        filled.push(`HDL: ${latestHdl.value} mmol/L (${latestHdl.date})`)
+      } else {
+        filled.push('HDL: ej angivet – medelvärde 1,3 mmol/L används')
+      }
+
+      // Non-HDL from latest lab (overrides calculated)
+      const latestNonHdl = labs
+        .filter(l => l.type === 'nonHdl')
+        .sort((a, b) => b.date.localeCompare(a.date))[0]
+      if (latestNonHdl) {
+        filled.push(`Non-HDL: ${latestNonHdl.value} mmol/L (${latestNonHdl.date}) – direkt från provsvar`)
+      }
+
       setAutoFilled(filled)
+      setMissing(miss)
+      setAutoParams(params)
+
+      // Auto-calculate if required fields present
+      if (params.age && params.sex && params.sbp && params.totalCholesterol) {
+        const res = calculateScore2(params)
+        const scen = calculateRiskScenarios(params)
+        setAutoResult(res)
+        setAutoScenarios(scen)
+      }
     }
     load()
   }, [])
 
-  function handleChange(field, value) {
-    setForm(f => ({ ...f, [field]: value }))
-    setResult(null); setScenarios(null)
-  }
-
-  async function handleCalculate(e) {
-    e.preventDefault()
-    const params = {
-      age: parseInt(form.age),
-      sex: form.sex,
-      smoking: form.smoking,
-      sbp: parseInt(form.sbp),
-      totalCholesterol: parseFloat(form.totalCholesterol),
-      hdl: form.hdl ? parseFloat(form.hdl) : null
-    }
-    if (!params.age || !params.sbp || !params.totalCholesterol) return
-    if (params.age < 40 || params.age > 79) {
-      alert('SCORE2 är validerat för åldrarna 40–79 år.')
-      return
-    }
-
-    await setProfile('score2params', {
-      age: form.age, sex: form.sex, smoking: form.smoking,
-      totalCholesterol: form.totalCholesterol, hdl: form.hdl
-    })
-
-    const res = calculateScore2(params)
-    const scen = calculateRiskScenarios(params)
-    setResult(res)
-    setScenarios(scen)
-  }
-
-  const riskBarWidth = result ? Math.min(result.risk * 100 * 4, 100) : 0 // Scale for visual
+  const riskBarWidth = autoResult ? Math.min(autoResult.risk * 100 * 4, 100) : 0
 
   return (
     <div className="view-content">
       <div className="card">
-        <h2 className="card-title">SCORE2 – Hjärt-kärlrisk</h2>
-        <p className="card-desc">
-          Beräknar 10-årsrisk för hjärt-kärlsjukdom enligt ESC 2021 (Norden – låg riskregion).
-        </p>
-        {autoFilled.length > 0 && (
-          <div className="autofill-notice">
-            <span>✓ Förifyllt från dina data:</span>
-            <ul>{autoFilled.map((s, i) => <li key={i}>{s}</li>)}</ul>
-          </div>
+        <h2 className="card-title">SCORE2 – Din hjärt-kärlrisk</h2>
+        {patientName && (
+          <p className="score-patient-name">{patientName}</p>
         )}
+        <p className="card-desc">
+          10-årsrisk för hjärt-kärlsjukdom (ESC 2021, Norden). Beräknas automatiskt från dina registrerade värden.
+        </p>
       </div>
 
+      {/* Data sources card */}
       <div className="card">
-        <form onSubmit={handleCalculate} className="score-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Ålder (40–79) *</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={form.age}
-                onChange={e => handleChange('age', e.target.value)}
-                placeholder="60"
-                min="40" max="79"
-                required
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label>Kön *</label>
-              <select
-                value={form.sex}
-                onChange={e => handleChange('sex', e.target.value)}
-                className="form-input"
-              >
-                <option value="male">Man</option>
-                <option value="female">Kvinna</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={form.smoking}
-                onChange={e => handleChange('smoking', e.target.checked)}
-              />
-              Rökare (aktuell)
-            </label>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Systoliskt BT (mmHg) *</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={form.sbp}
-                onChange={e => handleChange('sbp', e.target.value)}
-                placeholder="130"
-                min="80" max="260"
-                required
-                className="form-input"
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Totalkolesterol (mmol/L) *</label>
-              <input
-                type="number"
-                step="0.1"
-                value={form.totalCholesterol}
-                onChange={e => handleChange('totalCholesterol', e.target.value)}
-                placeholder="5.0"
-                min="1" max="15"
-                required
-                className="form-input"
-              />
-            </div>
-            <div className="form-group">
-              <label>HDL (mmol/L, valfri)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={form.hdl}
-                onChange={e => handleChange('hdl', e.target.value)}
-                placeholder="1.3"
-                min="0.1" max="5"
-                className="form-input"
-              />
-              <span className="form-hint">Utelämnas: medel-HDL 1.3 antas</span>
-            </div>
-          </div>
-
-          <button type="submit" className="btn-primary">Beräkna risk</button>
-        </form>
+        <h3 className="card-title">Underlag för beräkning</h3>
+        {autoFilled.length > 0 && (
+          <ul className="autofill-list">
+            {autoFilled.map((s, i) => <li key={i} className="autofill-item">✓ {s}</li>)}
+          </ul>
+        )}
+        {missing.length > 0 && (
+          <>
+            <div className="missing-label">Saknas:</div>
+            <ul className="missing-list">
+              {missing.map((s, i) => <li key={i} className="missing-item">⚠ {s}</li>)}
+            </ul>
+          </>
+        )}
+        <p className="card-hint" style={{ marginTop: 10 }}>
+          Uppdatera profil och provsvar i <strong>Inställningar ⚙</strong> och fliken <strong>Provsvar</strong>.
+        </p>
       </div>
 
-      {result && (
+      {!autoResult && missing.length > 0 && (
+        <div className="card">
+          <p className="score-waiting">
+            Fyll i uppgifterna som saknas ovan för att se din risk automatiskt.
+          </p>
+        </div>
+      )}
+
+      {autoResult && (
         <>
-          <div className="card score-result-card" style={{ borderColor: result.category.color }}>
+          <div className="card score-result-card" style={{ borderColor: autoResult.category.color }}>
             <div className="score-main">
-              <div className="score-percent" style={{ color: result.category.color }}>
-                {result.riskPercent}%
+              <div className="score-percent" style={{ color: autoResult.category.color }}>
+                {autoResult.riskPercent}%
               </div>
-              <div className="score-category" style={{ background: result.category.color }}>
-                {result.category.label}
+              <div className="score-category" style={{ background: autoResult.category.color }}>
+                {autoResult.category.label}
               </div>
             </div>
-            <p className="score-desc">{result.category.desc}</p>
+            <p className="score-desc">{autoResult.category.desc}</p>
 
-            {/* Risk bar */}
             <div className="risk-bar-track">
-              <div className="risk-bar-fill" style={{ width: `${riskBarWidth}%`, background: result.category.color }} />
+              <div className="risk-bar-fill" style={{ width: `${riskBarWidth}%`, background: autoResult.category.color }} />
               <div className="risk-bar-zones">
                 <span style={{ left: '0%' }}>0%</span>
                 <span style={{ left: '25%' }}>Låg</span>
@@ -220,18 +189,17 @@ export default function ScoreView() {
             </div>
 
             <div className="score-nonhdl">
-              Non-HDL: {result.nonHdl} mmol/L
-              {!form.hdl && <span className="form-hint"> (uppskattat)</span>}
+              Non-HDL: <strong>{autoResult.nonHdl} mmol/L</strong>
+              {!autoParams?.hdl && <span className="form-hint"> (uppskattat – fråga din läkare om ditt faktiska non-HDL!)</span>}
             </div>
           </div>
 
-          {/* BP scenarios */}
-          {scenarios && (
+          {autoScenarios && (
             <div className="card">
               <h3 className="card-title">Om blodtrycket sänks</h3>
               <p className="card-desc">Uppskattad riskförändring vid lägre blodtryck:</p>
               <div className="scenarios">
-                {scenarios.map((s, i) => (
+                {autoScenarios.map((s, i) => (
                   <div
                     key={i}
                     className={`scenario-item ${i === 0 ? 'scenario-current' : ''}`}
@@ -247,7 +215,7 @@ export default function ScoreView() {
                     </div>
                     {i > 0 && (
                       <div className="scenario-diff" style={{ color: '#16a34a' }}>
-                        −{(parseFloat(scenarios[0].riskPercent) - parseFloat(s.riskPercent)).toFixed(1)}%
+                        −{(parseFloat(autoScenarios[0].riskPercent) - parseFloat(s.riskPercent)).toFixed(1)}%
                       </div>
                     )}
                   </div>
