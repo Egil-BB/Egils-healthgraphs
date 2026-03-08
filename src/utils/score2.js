@@ -122,12 +122,14 @@ export function calculateRiskScenarios(params) {
 }
 
 export const LAB_TYPES = [
-  { value: 'totalCholesterol', label: 'Totalkolesterol', unit: 'mmol/L', scoreRelevant: true },
-  { value: 'ldl', label: 'LDL-kolesterol', unit: 'mmol/L', scoreRelevant: false },
-  { value: 'hdl', label: 'HDL-kolesterol', unit: 'mmol/L', scoreRelevant: true },
-  { value: 'triglycerides', label: 'Triglycerider', unit: 'mmol/L', scoreRelevant: false },
+  { value: 'totalCholesterol', label: 'Totalkolesterol', unit: 'mmol/L', scoreRelevant: true, refMax: 5.0 },
+  { value: 'ldl', label: 'LDL-kolesterol', unit: 'mmol/L', scoreRelevant: false, refMax: 2.5 },
+  { value: 'hdl', label: 'HDL-kolesterol', unit: 'mmol/L', scoreRelevant: true, refMin: 1.0 },
+  { value: 'nonHdl', label: 'Non-HDL-kolesterol', unit: 'mmol/L', scoreRelevant: true, refMax: 3.4 },
+  { value: 'triglycerides', label: 'Triglycerider', unit: 'mmol/L', scoreRelevant: false, refMax: 1.7 },
+  { value: 'hb', label: 'Hemoglobin (Hb)', unit: 'g/L', scoreRelevant: false },
+  { value: 'potassium', label: 'Kalium', unit: 'mmol/L', scoreRelevant: false, refMin: 3.5, refMax: 5.0 },
   { value: 'creatinine', label: 'Kreatinin', unit: 'µmol/L', scoreRelevant: false },
-  { value: 'hba1c', label: 'HbA1c', unit: 'mmol/mol', scoreRelevant: false },
-  { value: 'glucose', label: 'P-Glukos', unit: 'mmol/L', scoreRelevant: false },
-  { value: 'other', label: 'Annat', unit: '', scoreRelevant: false }
+  { value: 'glucose', label: 'P-Glukos (faste)', unit: 'mmol/L', scoreRelevant: false, refMax: 6.1 },
+  { value: 'hba1c', label: 'HbA1c', unit: 'mmol/mol', scoreRelevant: false, refMax: 48 },
 ]
