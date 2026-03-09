@@ -23,8 +23,9 @@ function bmiCategory(bmiVal) {
 export default function WeightView({ onDataChange, refreshKey }) {
   const [weights, setWeights] = useState([])
   const [height, setHeight] = useState(null)
-  const [form, setForm] = useState({ date: todayStr(), weight: '' })
+  const [form, setForm] = useState({ date: todayStr(), weight: '', waist: '' })
   const [showForm, setShowForm] = useState(false)
+  const [sex, setSex] = useState(null)
 
   const load = useCallback(async () => {
     const [ws, profile] = await Promise.all([
@@ -33,6 +34,7 @@ export default function WeightView({ onDataChange, refreshKey }) {
     ])
     setWeights(ws.sort((a, b) => b.date.localeCompare(a.date)))
     if (profile?.height) setHeight(parseFloat(profile.height))
+    if (profile?.sex) setSex(profile.sex)
   }, [])
 
   useEffect(() => { load() }, [load, refreshKey])
@@ -41,8 +43,9 @@ export default function WeightView({ onDataChange, refreshKey }) {
     e.preventDefault()
     const w = parseFloat(form.weight)
     if (!w || w < 20 || w > 300) return
-    await addWeight({ date: form.date, weight: w })
-    setForm({ date: todayStr(), weight: '' })
+    const waist = form.waist ? parseFloat(form.waist) : null
+    await addWeight({ date: form.date, weight: w, ...(waist ? { waist } : {}) })
+    setForm({ date: todayStr(), weight: '', waist: '' })
     setShowForm(false)
     await load()
     onDataChange?.()
@@ -75,7 +78,7 @@ export default function WeightView({ onDataChange, refreshKey }) {
         )}
       </div>
 
-      {/* Latest weight + BMI */}
+      {/* Latest weight + BMI + waist */}
       {latestWeight && (
         <div className="card">
           <div className="weight-summary">
@@ -91,9 +94,22 @@ export default function WeightView({ onDataChange, refreshKey }) {
               </div>
             )}
           </div>
+          {latestWeight.waist && (
+            <div className="waist-row">
+              <span className="waist-label">Midjemått:</span>
+              <span className="waist-val">{latestWeight.waist} cm</span>
+              {sex && (() => {
+                const limit = sex === 'male' ? 94 : 80
+                const high = sex === 'male' ? 102 : 88
+                if (latestWeight.waist >= high) return <span className="waist-risk waist-risk-high">⚠ Mycket hög risk ({sex === 'male' ? '>102' : '>88'} cm)</span>
+                if (latestWeight.waist >= limit) return <span className="waist-risk waist-risk-warn">⚠ Förhöjd risk ({sex === 'male' ? '>94' : '>80'} cm)</span>
+                return <span className="waist-risk waist-risk-ok">✓ Normalt</span>
+              })()}
+            </div>
+          )}
           <p className="bmi-date">Senaste vägning: {formatDateSv(latestWeight.date)}</p>
           {latestBmi && (
-            <p className="bmi-disclaimer">BMI kan vara missvisande vid hög muskelmassa.</p>
+            <p className="bmi-disclaimer">BMI kan vara missvisande vid hög muskelmassa. Midjemått: män &gt;94 cm = förhöjd risk, &gt;102 cm = hög risk; kvinnor &gt;80/&gt;88 cm.</p>
           )}
         </div>
       )}
@@ -128,6 +144,19 @@ export default function WeightView({ onDataChange, refreshKey }) {
                 />
               </div>
             </div>
+            <div className="form-group">
+              <label>Midjemått (cm) <span className="form-hint-inline">valfritt</span></label>
+              <input
+                type="number"
+                step="0.5"
+                value={form.waist}
+                onChange={e => setForm(f => ({ ...f, waist: e.target.value }))}
+                placeholder={sex === 'female' ? 'Norm <80 cm' : 'Norm <94 cm'}
+                min="50" max="200"
+                className="form-input"
+              />
+              <span className="form-hint">Mät på mitten mellan nedre revbenet och höftkammen.</span>
+            </div>
             {form.weight && height && (
               <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>
                 BMI: {calcBMI(parseFloat(form.weight), height) || '–'}
@@ -157,6 +186,7 @@ export default function WeightView({ onDataChange, refreshKey }) {
                 <div key={w.id} className="weight-row">
                   <span className="weight-row-date">{formatDateSv(w.date)}</span>
                   <span className="weight-row-val">{w.weight} kg</span>
+                  {w.waist && <span className="weight-row-waist">📏 {w.waist} cm</span>}
                   {b && <span className="weight-row-bmi" style={{ color: cat.color }}>BMI {b}</span>}
                   <button className="btn-delete" onClick={() => handleDelete(w.id)}>×</button>
                 </div>

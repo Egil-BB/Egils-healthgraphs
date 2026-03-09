@@ -108,19 +108,22 @@ function getRiskCategory(riskPct, age) {
 }
 
 /**
- * Visa hur risken förändras vid lägre blodtryck
+ * Visa hur risken förändras vid lägre blodtryck och/eller kolesterol
  */
 export function calculateRiskScenarios(params) {
+  const nonHdlNow = params.nonHdlDirect ?? (params.hdl != null ? params.totalCholesterol - params.hdl : (params.totalCholesterol ?? 5) - 1.3)
   const scenarios = [
-    { label: 'Nuvarande', sbpOffset: 0 },
-    { label: '−10 mmHg', sbpOffset: -10 },
-    { label: '−20 mmHg', sbpOffset: -20 }
+    { label: 'Nuvarande', sbpOffset: 0, nonHdlOffset: 0 },
+    { label: '−10 mmHg BT', sbpOffset: -10, nonHdlOffset: 0 },
+    { label: '−20 mmHg BT', sbpOffset: -20, nonHdlOffset: 0 },
+    { label: '−1,0 non-HDL', sbpOffset: 0, nonHdlOffset: -1.0 },
+    { label: '−10 mmHg + −1,0', sbpOffset: -10, nonHdlOffset: -1.0, combined: true }
   ]
-  return scenarios.map(s => ({
-    ...s,
-    sbp: params.sbp + s.sbpOffset,
-    ...calculateScore2({ ...params, sbp: params.sbp + s.sbpOffset })
-  }))
+  return scenarios.map(s => {
+    const newNonHdl = Math.max(0.5, nonHdlNow + s.nonHdlOffset)
+    const adjusted = { ...params, sbp: params.sbp + s.sbpOffset, nonHdlDirect: newNonHdl }
+    return { ...s, sbp: adjusted.sbp, nonHdl: newNonHdl, ...calculateScore2(adjusted) }
+  })
 }
 
 export const LAB_TYPES = [
@@ -143,4 +146,5 @@ export const LAB_TYPES = [
   { value: 'tsh', label: 'TSH', unit: 'mIE/L', scoreRelevant: false, refMin: 0.4, refMax: 4.0 },
   { value: 'crp', label: 'CRP', unit: 'mg/L', scoreRelevant: false, refMax: 5.0 },
   { value: 'uricAcid', label: 'Urat (urinsyra)', unit: 'µmol/L', scoreRelevant: false, refMax: 420 },
+  { value: 'psa', label: 'PSA', unit: 'µg/L', scoreRelevant: false, refMax: 4.0 },
 ]

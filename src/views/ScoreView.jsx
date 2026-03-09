@@ -27,6 +27,126 @@ function bmiCategory(bmiVal) {
   return { label: 'Fetma', color: '#dc2626' }
 }
 
+// ── Clinical flag detection ───────────────────────────────────────────────────
+
+function detectClinicalFlags({ labs, avgSys, avgDia, waist, sex, bmi }) {
+  const flags = []
+  const latestLab = (type) => labs.filter(l => l.type === type).sort((a, b) => b.date.localeCompare(a.date))[0]?.value ?? null
+
+  const glucose = latestLab('glucose')
+  const hba1c = latestLab('hba1c')
+  const tg = latestLab('triglycerides')
+  const hdl = latestLab('hdl')
+  const egfr = latestLab('egfr')
+  const creatinine = latestLab('creatinine')
+  const albKrea = latestLab('albKrea')
+
+  // ── Diabetes / Prediabetes ──────────────────────────────────────────────
+  const hasDiabetes = (glucose !== null && glucose >= 7.0) || (hba1c !== null && hba1c >= 48)
+  const hasPrediabetes = !hasDiabetes && ((glucose !== null && glucose >= 5.6) || (hba1c !== null && hba1c >= 42))
+
+  if (hasDiabetes) {
+    flags.push({
+      id: 'diabetes',
+      level: 'danger',
+      icon: '🩸',
+      title: 'Möjlig diabetes detekterad',
+      details: [
+        glucose !== null && glucose >= 7.0 ? `Fasteglukos ${glucose} mmol/L (≥7,0)` : null,
+        hba1c !== null && hba1c >= 48 ? `HbA1c ${hba1c} mmol/mol (≥48)` : null
+      ].filter(Boolean),
+      advice: 'Kontakta din vårdcentral. Diabetes kräver diagnos via läkare och ofta behandling med kost, motion och/eller läkemedel. Målvärde HbA1c <52 (ofta <48 vid nydiagnostiserad).',
+      link: 'https://www.1177.se/sjukdomar--besvar/hormoner-och-amnesomsattning/diabetes/'
+    })
+  } else if (hasPrediabetes) {
+    flags.push({
+      id: 'prediabetes',
+      level: 'warn',
+      icon: '🩸',
+      title: 'Prediabetes/förhöjt socker',
+      details: [
+        glucose !== null && glucose >= 5.6 ? `Fasteglukos ${glucose} mmol/L (norm <5,6)` : null,
+        hba1c !== null && hba1c >= 42 ? `HbA1c ${hba1c} mmol/mol (norm <42)` : null
+      ].filter(Boolean),
+      advice: 'Livsstilsförändringar kan förebygga diabetes typ 2. Fokusera på regelbunden motion, kostomläggning (minska snabba kolhydrater) och viktnedgång om övervikt föreligger. Diskutera med din läkare.',
+      link: 'https://www.1177.se'
+    })
+  }
+
+  // ── Kidney disease ──────────────────────────────────────────────────────
+  const kidneyFlag = (egfr !== null && egfr < 60) || (albKrea !== null && albKrea > 3) ||
+    (creatinine !== null && ((sex === 'male' && creatinine > 105) || (sex === 'female' && creatinine > 90)))
+
+  if (kidneyFlag) {
+    flags.push({
+      id: 'kidney',
+      level: egfr !== null && egfr < 45 ? 'danger' : 'warn',
+      icon: '🫘',
+      title: 'Tecken på nedsatt njurfunktion',
+      details: [
+        egfr !== null && egfr < 60 ? `eGFR ${egfr} mL/min (norm ≥60)` : null,
+        creatinine !== null && ((sex === 'male' && creatinine > 105) || (sex === 'female' && creatinine > 90))
+          ? `Kreatinin ${creatinine} µmol/L (norm: män <105, kvinnor <90)` : null,
+        albKrea !== null && albKrea > 3 ? `Alb-krea kvot ${albKrea} mg/mmol (norm <3)` : null
+      ].filter(Boolean),
+      advice: 'Njurpåverkan kan ha flera orsaker (högt BT, diabetes, läkemedel m.m.). Kontrollera blodtrycksmediciner (ARB/ACE, HKTZ) och Metformin. Diskutera med din läkare om uppföljning.',
+      link: 'https://www.1177.se/sjukdomar--besvar/njurar-och-urinvagar/'
+    })
+  }
+
+  // ── Metabolic syndrome ──────────────────────────────────────────────────
+  let metSyndCriteria = 0
+  const metSyndDetails = []
+  const waistLimit = sex === 'female' ? 80 : 94
+  if (waist && waist >= waistLimit) { metSyndCriteria++; metSyndDetails.push(`Midjemått ${waist} cm (gräns ${waistLimit} cm)`) }
+  if (tg !== null && tg >= 1.7) { metSyndCriteria++; metSyndDetails.push(`Triglycerider ${tg} mmol/L (≥1,7)`) }
+  const hdlLimit = sex === 'female' ? 1.3 : 1.0
+  if (hdl !== null && hdl < hdlLimit) { metSyndCriteria++; metSyndDetails.push(`HDL ${hdl} mmol/L (<${hdlLimit})`) }
+  if (avgSys && avgDia && (avgSys >= 130 || avgDia >= 85)) { metSyndCriteria++; metSyndDetails.push(`BT ${avgSys}/${avgDia} mmHg (≥130/85)`) }
+  if (glucose !== null && glucose >= 5.6) { metSyndCriteria++ } // already counted above if prediabetes shown
+
+  if (metSyndCriteria >= 3 && !hasDiabetes) {
+    flags.push({
+      id: 'metsynd',
+      level: 'warn',
+      icon: '⚖️',
+      title: 'Möjligt metabolt syndrom',
+      details: metSyndDetails,
+      advice: 'Metabolt syndrom ökar risken för hjärt-kärlsjukdom och typ 2-diabetes avsevärt. Livsstilsbehandling (ökad motion, minskat socker/kolhydrater, viktnedgång) är förstahandsval. Diskutera med din läkare.',
+      link: 'https://www.1177.se'
+    })
+  }
+
+  return flags
+}
+
+// ── PSA recommendation ────────────────────────────────────────────────────────
+
+function getPsaRecommendation(psaValue, age, hereditary) {
+  if (psaValue === null || !age) return null
+  let nextTest, comment, level = 'info'
+
+  if (psaValue >= 4.0) {
+    nextTest = 'Snarast – remiss till urolog'
+    comment = 'PSA ≥4,0 µg/L. Kontakta din läkare för bedömning och eventuell remiss till urolog.'
+    level = 'danger'
+  } else if (psaValue >= 2.0) {
+    nextTest = hereditary ? 'Om 6–12 månader' : 'Om 12 månader'
+    comment = `PSA ${psaValue} µg/L (2,0–4,0). Tätare kontroller rekommenderas.${hereditary ? ' Ärftlig riskgrupp – tätare kontroll.' : ''}`
+    level = 'warn'
+  } else if (psaValue >= 1.0) {
+    nextTest = hereditary ? 'Om 1–2 år' : 'Om 2 år'
+    comment = `PSA ${psaValue} µg/L (1,0–2,0). Regelbunden kontroll rekommenderas.`
+  } else {
+    nextTest = hereditary ? 'Om 2 år' : (age < 55 ? 'Om 5–8 år' : 'Om 4 år')
+    comment = `PSA ${psaValue} µg/L (< 1,0). Låg risk, gles kontroll räcker.`
+  }
+
+  return { nextTest, comment, level }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ScoreView({ refreshKey }) {
   const [patientName, setPatientName] = useState('')
   const [autoResult, setAutoResult] = useState(null)
@@ -35,6 +155,10 @@ export default function ScoreView({ refreshKey }) {
   const [missing, setMissing] = useState([])
   const [autoParams, setAutoParams] = useState(null)
   const [bmiData, setBmiData] = useState(null)
+  const [clinicalFlags, setClinicalFlags] = useState([])
+  const [psaData, setPsaData] = useState(null)
+  const [psaHereditary, setPsaHereditary] = useState(false)
+  const [sex, setSex] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -51,17 +175,21 @@ export default function ScoreView({ refreshKey }) {
       const miss = []
 
       if (savedProfile?.name) setPatientName(savedProfile.name)
+      if (savedProfile?.sex) setSex(savedProfile.sex)
 
       // Height + latest weight → BMI
+      let latestWaist = null
       if (savedProfile?.height && weights.length > 0) {
         const latestW = [...weights].sort((a, b) => b.date.localeCompare(a.date))[0]
         const bmi = calcBMI(latestW.weight, savedProfile.height)
         if (bmi) setBmiData({ bmi, weight: latestW.weight, height: savedProfile.height, date: latestW.date, category: bmiCategory(bmi) })
+        if (latestW.waist) latestWaist = latestW.waist
       }
 
       // Age from birthdate
+      let age = null
       if (savedProfile?.birthdate) {
-        const age = calculateAge(savedProfile.birthdate)
+        age = calculateAge(savedProfile.birthdate)
         if (age >= 40 && age <= 79) {
           params.age = age
           filled.push(`Ålder: ${age} år`)
@@ -82,7 +210,7 @@ export default function ScoreView({ refreshKey }) {
         miss.push('Kön (ange i Inställningar ⚙)')
       }
 
-      // Smoking – from latest lifestyle questionnaire
+      // Smoking
       const sortedLifestyles = [...lifestyles].sort((a, b) => b.date.localeCompare(a.date))
       const latestLifestyle = sortedLifestyles[0]
       let isSmoker = savedProfile?.smoking || false
@@ -100,12 +228,14 @@ export default function ScoreView({ refreshKey }) {
       params.smoking = isSmoker
 
       // SBP from 14-day average
+      let avgSys = null, avgDia = null
       if (measurements.length > 0) {
         const sorted = [...measurements].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
         const daily = getDailyAverages(sorted)
         const recent14 = daily.slice(-14)
         if (recent14.length > 0) {
-          const avgSys = Math.round(recent14.reduce((s, d) => s + d.avgSys, 0) / recent14.length)
+          avgSys = Math.round(recent14.reduce((s, d) => s + d.avgSys, 0) / recent14.length)
+          avgDia = Math.round(recent14.reduce((s, d) => s + d.avgDia, 0) / recent14.length)
           params.sbp = avgSys
           filled.push(`Systoliskt BT: ${avgSys} mmHg (14-dagarssnitt)`)
         }
@@ -146,17 +276,42 @@ export default function ScoreView({ refreshKey }) {
         setAutoResult(calculateScore2(params))
         setAutoScenarios(calculateRiskScenarios(params))
       }
+
+      // Clinical flags
+      const flags = detectClinicalFlags({
+        labs,
+        avgSys,
+        avgDia,
+        waist: latestWaist,
+        sex: savedProfile?.sex,
+        bmi: null
+      })
+      setClinicalFlags(flags)
+
+      // PSA (males only)
+      if (savedProfile?.sex === 'male') {
+        const latestPsa = labs.filter(l => l.type === 'psa').sort((a, b) => b.date.localeCompare(a.date))[0]
+        if (latestPsa) {
+          setPsaData({ value: latestPsa.value, date: latestPsa.date, age })
+        }
+      }
     }
     load()
   }, [refreshKey])
 
   const riskBarWidth = autoResult ? Math.min(autoResult.risk * 100 * 4, 100) : 0
 
+  // PSA recommendation (live update when hereditary toggle changes)
+  const psaRec = psaData ? getPsaRecommendation(psaData.value, psaData.age, psaHereditary) : null
+
   return (
     <div className="view-content">
       <div className="card">
         <h2 className="card-title">Risk & hälsoöversikt</h2>
         {patientName && <p className="score-patient-name">{patientName}</p>}
+        <p className="card-desc" style={{ marginTop: 6, fontSize: 13 }}>
+          Kalkylatorn läser automatiskt in dina senaste blodtrycksmätningar, provsvar och profil och beräknar SCORE2-risk samt söker efter tecken på diabetes, njursjukdom och metabolt syndrom.
+        </p>
       </div>
 
       {/* BMI */}
@@ -189,6 +344,63 @@ export default function ScoreView({ refreshKey }) {
             >▼</div>
           </div>
           <p className="bmi-disclaimer">BMI kan vara missvisande vid hög muskelmassa.</p>
+        </div>
+      )}
+
+      {/* Clinical flags */}
+      {clinicalFlags.length > 0 && (
+        <div className="card">
+          <h3 className="card-title">Kliniska fynd</h3>
+          {clinicalFlags.map(f => (
+            <div key={f.id} className={`clin-flag clin-flag-${f.level}`}>
+              <div className="clin-flag-header">
+                <span className="clin-flag-icon">{f.icon}</span>
+                <span className="clin-flag-title">{f.title}</span>
+              </div>
+              {f.details.length > 0 && (
+                <ul className="clin-flag-details">
+                  {f.details.map((d, i) => <li key={i}>{d}</li>)}
+                </ul>
+              )}
+              <p className="clin-flag-advice">{f.advice}</p>
+              <a href={f.link} target="_blank" rel="noopener noreferrer" className="clin-flag-link">
+                Mer på 1177 ↗
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {clinicalFlags.length === 0 && autoResult && (
+        <div className="card">
+          <p className="score-no-flags">✓ Inga kroniska sjukdomar detekterade utifrån tillgängliga provsvar.</p>
+        </div>
+      )}
+
+      {/* PSA (males only) */}
+      {sex === 'male' && psaData && psaRec && (
+        <div className="card">
+          <h3 className="card-title">PSA-uppföljning</h3>
+          <div className="psa-row">
+            <span className="psa-val">{psaData.value} µg/L</span>
+            <span className="psa-date">({psaData.date})</span>
+          </div>
+          <label className="checkbox-label" style={{ marginTop: 8 }}>
+            <input type="checkbox" checked={psaHereditary} onChange={e => setPsaHereditary(e.target.checked)} />
+            Ärftlig riskgrupp (nära manlig släkting med prostatacancer)
+          </label>
+          <div className={`psa-rec psa-rec-${psaRec.level}`}>
+            <span className="psa-rec-next">Nästa provtagning: <strong>{psaRec.nextTest}</strong></span>
+            <p className="psa-rec-comment">{psaRec.comment}</p>
+          </div>
+          <p className="psa-disclaimer">PSA-screening är individuell och inte en del av allmän screening i Sverige. Diskutera med din läkare. <a href="https://www.1177.se" target="_blank" rel="noopener noreferrer">1177 ↗</a></p>
+        </div>
+      )}
+      {sex === 'male' && !psaData && (
+        <div className="card">
+          <p className="card-desc">
+            <strong>PSA:</strong> Lägg till PSA-värde under Provsvar för att se rekommendation om nästa provtagning.
+          </p>
         </div>
       )}
 
@@ -245,10 +457,17 @@ export default function ScoreView({ refreshKey }) {
 
           {autoScenarios && (
             <div className="card">
-              <h3 className="card-title">Om blodtrycket sänks</h3>
+              <h3 className="card-title">Scenarion – om riskfaktorer sänks</h3>
+              <p className="card-desc" style={{ marginBottom: 10, fontSize: 13 }}>
+                Visar hur 10-årsrisken förändras om blodtrycket och/eller kolesterolet sänks.
+              </p>
               <div className="scenarios">
                 {autoScenarios.map((s, i) => (
-                  <div key={i} className={`scenario-item ${i === 0 ? 'scenario-current' : ''}`} style={{ borderColor: s.category.color }}>
+                  <div
+                    key={i}
+                    className={`scenario-item ${i === 0 ? 'scenario-current' : ''} ${s.combined ? 'scenario-combined' : ''}`}
+                    style={{ borderColor: s.category.color }}
+                  >
                     <div className="scenario-label">{s.label}</div>
                     <div className="scenario-sbp">{s.sbp} mmHg</div>
                     <div className="scenario-risk" style={{ color: s.category.color }}>{s.riskPercent}%</div>

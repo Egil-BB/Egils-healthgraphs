@@ -1,16 +1,21 @@
 // Blood pressure utility functions
 
 export const BP_CATEGORIES = [
-  { label: 'Optimalt',         maxSys: 130, maxDia: 80,       color: '#16a34a', bg: '#dcfce7', crisis: false },
-  { label: 'Bra',              maxSys: 135, maxDia: 85,       color: '#65a30d', bg: '#ecfccb', crisis: false },
-  { label: 'Acceptabelt',      maxSys: 140, maxDia: 90,       color: '#ca8a04', bg: '#fef9c3', crisis: false },
-  { label: 'Förhöjt',         maxSys: 160, maxDia: 100,      color: '#ea580c', bg: '#ffedd5', crisis: false },
-  { label: 'Högt',             maxSys: 180, maxDia: 110,      color: '#dc2626', bg: '#fee2e2', crisis: false },
+  { label: 'Mycket lågt',     maxSys: 90,       maxDia: 60,       color: '#7c3aed', bg: '#ede9fe', crisis: false, low: true },
+  { label: 'Lågt',            maxSys: 100,      maxDia: 65,       color: '#9333ea', bg: '#f3e8ff', crisis: false, low: true },
+  { label: 'Optimalt',        maxSys: 130,      maxDia: 80,       color: '#16a34a', bg: '#dcfce7', crisis: false },
+  { label: 'Bra',             maxSys: 135,      maxDia: 85,       color: '#65a30d', bg: '#ecfccb', crisis: false },
+  { label: 'Acceptabelt',     maxSys: 140,      maxDia: 90,       color: '#ca8a04', bg: '#fef9c3', crisis: false },
+  { label: 'Förhöjt',        maxSys: 160,      maxDia: 100,      color: '#ea580c', bg: '#ffedd5', crisis: false },
+  { label: 'Högt',            maxSys: 180,      maxDia: 110,      color: '#dc2626', bg: '#fee2e2', crisis: false },
   { label: 'Hypertensiv kris', maxSys: Infinity, maxDia: Infinity, color: '#7f1d1d', bg: '#fca5a5', crisis: true }
 ]
 
 export function classifyBP(sys, dia) {
-  for (const cat of BP_CATEGORIES) {
+  // Low BP: primarily driven by systolic
+  if (sys < 90) return BP_CATEGORIES[0]
+  if (sys < 100) return BP_CATEGORIES[1]
+  for (const cat of BP_CATEGORIES.slice(2)) {
     if (sys < cat.maxSys && dia < cat.maxDia) return cat
   }
   return BP_CATEGORIES[BP_CATEGORIES.length - 1]
