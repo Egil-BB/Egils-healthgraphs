@@ -35,6 +35,7 @@ html, body, #root { height: 100%; }
   margin: 0 auto;
   background: var(--bg);
   position: relative;
+  overflow: hidden;
 }
 
 /* ─── Header ────────────────────────────────────────────────────────────── */
@@ -1318,6 +1319,338 @@ html, body, #root { height: 100%; }
 
 .delete-confirm-form { margin-top: 12px; }
 .delete-confirm-label { font-size: 14px; margin-bottom: 8px; }
+
+/* ─── BP Sliders ─────────────────────────────────────────────────────────── */
+.slider-section { display: flex; flex-direction: column; gap: 18px; margin-bottom: 14px; }
+.slider-group { display: flex; flex-direction: column; gap: 6px; }
+.slider-label-row { display: flex; align-items: baseline; gap: 8px; }
+.slider-lbl { font-size: 14px; font-weight: 600; color: var(--text-muted); flex: 1; }
+.slider-val { font-size: 26px; font-weight: 800; line-height: 1; }
+.slider-unit-sm { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+
+.slider-track-wrap {
+  position: relative;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+.slider-track-fill {
+  position: absolute;
+  left: 0;
+  height: 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  transition: width 0.05s, background 0.2s;
+  z-index: 1;
+}
+.bp-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+.bp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--primary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.bp-slider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--primary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  cursor: pointer;
+}
+.bp-slider::-webkit-slider-runnable-track { background: transparent; }
+
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 0 2px;
+  margin-top: 2px;
+}
+.slider-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* BP Preview */
+.bp-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 2px solid;
+  margin-bottom: 10px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.bp-preview-value { font-size: 22px; font-weight: 800; }
+.bp-preview-label { font-size: 14px; font-weight: 600; }
+
+/* Crisis warning */
+.crisis-warning {
+  background: #fca5a5;
+  border: 2px solid #7f1d1d;
+  border-radius: var(--radius);
+  color: #7f1d1d;
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+/* Pulse row */
+.pulse-opt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.pulse-opt-label { font-size: 14px; font-weight: 600; flex: 1; }
+.optional-tag {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+.pulse-opt-right { display: flex; align-items: center; gap: 6px; }
+.pulse-input-sm {
+  width: 60px;
+  text-align: center;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.pulse-unit-sm { font-size: 12px; color: var(--text-muted); }
+
+/* Measurement tip */
+.measure-tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #dcfce7;
+  border: 1.5px solid #16a34a;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.measure-tip-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.measure-tip-text { color: #14532d; }
+
+/* ─── Lifestyle wizard ───────────────────────────────────────────────────── */
+.wizard-progress-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 0;
+}
+.wizard-progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.wizard-step-num {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.wizard-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.wizard-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.wizard-question { padding-bottom: 12px; }
+.wizard-question-sep { border-top: 1px solid var(--border); padding-top: 14px; }
+.wizard-q-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-style: italic; }
+.wizard-nav {
+  display: flex;
+  gap: 10px;
+  padding: 0 0 8px;
+}
+.wizard-nav .btn-primary, .wizard-nav .btn-secondary { flex: 1; }
+
+/* Lifestyle category intro chips */
+.lifestyle-category-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.lifestyle-cat-chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 12px;
+  font-weight: 500;
+}
+.cat-chip-max { font-weight: 700; margin-left: 4px; }
+
+/* Lifestyle result */
+.lifestyle-result-card { text-align: center; padding: 16px 0; }
+.lifestyle-score-big { font-size: 64px; font-weight: 900; line-height: 1; }
+.lifestyle-score-max { font-size: 22px; color: var(--text-muted); }
+.lifestyle-score-label { font-size: 18px; font-weight: 700; margin-top: 6px; }
+.lifestyle-feedback { font-size: 14px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+.lifestyle-filled-date { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+.lifestyle-next-date { font-size: 13px; color: var(--text-muted); }
+
+/* Category score breakdown */
+.lifestyle-cat-scores { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.cat-score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cat-score-name { font-size: 13px; min-width: 110px; font-weight: 500; }
+.cat-score-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.cat-score-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.cat-score-pts { font-size: 12px; font-weight: 700; min-width: 36px; text-align: right; }
+
+/* Smoking warning */
+.smoking-warning-card {
+  background: #fff7ed;
+  border: 2px solid #ea580c;
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.smoking-warning-title { font-size: 15px; font-weight: 700; color: #9a3412; }
+.smoking-warning-text { font-size: 14px; color: #7c2d12; line-height: 1.5; }
+.smoking-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.smoking-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ea580c;
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1.5px solid #ea580c;
+  border-radius: 20px;
+}
+
+/* History */
+.lifestyle-history-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lifestyle-history-date { font-size: 12px; color: var(--text-muted); min-width: 90px; }
+.lifestyle-history-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.lifestyle-history-bar { height: 100%; border-radius: 4px; }
+.lifestyle-history-score { font-size: 12px; font-weight: 700; min-width: 30px; text-align: right; }
+
+/* ─── Bristol multi-select ───────────────────────────────────────────────── */
+.bristol-card-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bristol-card { flex: 1; }
+.bristol-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  padding: 2px 7px;
+  border-radius: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.bristol-minus {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: white;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+.bristol-minus:hover { background: #fee2e2; }
+
+/* ─── Laxative buttons ───────────────────────────────────────────────────── */
+.lax-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.lax-btn {
+  padding: 8px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+.lax-btn:hover { border-color: var(--primary-mid); background: var(--primary-light); }
+.lax-btn-active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 700; }
+.lax-count {
+  font-size: 12px;
+  background: var(--primary);
+  color: white;
+  border-radius: 10px;
+  padding: 1px 6px;
+}
+
+/* ─── 1177 import ────────────────────────────────────────────────────────── */
+.btn-import-1177 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--primary-mid);
+  border-radius: var(--radius);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+}
+.btn-import-1177:hover { background: #bfdbfe; }
+.import-card { display: flex; flex-direction: column; gap: 10px; }
+.import-error { color: var(--danger); font-size: 14px; font-weight: 500; }
+.import-summary { font-size: 14px; color: var(--text); line-height: 1.5; }
+.import-question { font-size: 14px; color: var(--text); font-weight: 500; }
+.import-done { font-size: 14px; color: var(--success); font-weight: 600; }
+.import-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ─── Autocomplete ───────────────────────────────────────────────────────── */
 .autocomplete-dropdown {

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend
@@ -9,6 +10,138 @@ import { LAB_TYPES } from '../utils/score2'
 import { formatDateSv } from '../utils/bp'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
+
+// ── 1177 column → internal field mapping ─────────────────────────────────────
+
+const COLUMN_MAPPINGS = [
+  { field: 'totalCholesterol', keywords: ['kolesterol'], exclude: ['ldl', 'hdl', 'apo'] },
+  { field: 'ldl', keywords: ['ldl'], exclude: [] },
+  { field: 'hdl', keywords: ['hdl'], exclude: [] },
+  { field: 'triglycerides', keywords: ['triglycerid'], exclude: [] },
+  { field: 'glucose', keywords: ['glukos'], exclude: [] },
+  { field: 'hba1c', keywords: ['hba1c'], exclude: [] },
+  { field: 'hb', keywords: ['hemoglobin'], exclude: ['hba1c', 'cohb', 'methb', 'oxy'] },
+  { field: 'ferritin', keywords: ['ferritin'], exclude: [] },
+  { field: 'wbc', keywords: ['leukocyt', 'lpk'], exclude: [] },
+  { field: 'creatinine', keywords: ['kreatinin'], exclude: [] },
+  { field: 'egfr', keywords: ['egfr'], exclude: [] },
+  { field: 'albKrea', keywords: ['alb/krea', 'albkrea', 'mikroalbumin/kreat', 'albumin/krea'], exclude: [] },
+  { field: 'alat', keywords: ['alat'], exclude: [] },
+  { field: 'tsh', keywords: ['tsh'], exclude: [] },
+  { field: 'crp', keywords: ['crp'], exclude: ['hscrp', 'pna'] },
+]
+
+function matchColumn(header) {
+  const h = header.toLowerCase().replace(/[^a-zåäö0-9]/g, '')
+  for (const m of COLUMN_MAPPINGS) {
+    const matchesKeyword = m.keywords.some(k => h.includes(k.replace(/[^a-z0-9]/g, '')))
+    const isExcluded = m.exclude.some(e => h.includes(e.replace(/[^a-z0-9]/g, '')))
+    if (matchesKeyword && !isExcluded) return m.field
+  }
+  return null
+}
+
+function parseExcelDate(cell) {
+  if (!cell) return null
+  if (cell.t === 'd' && cell.v instanceof Date) {
+    return cell.v.toISOString().slice(0, 10)
+  }
+  const s = String(cell.v || '').trim()
+  const m = s.match(/(\d{4})[-/](\d{2})[-/](\d{2})/)
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`
+  // Try Excel serial
+  if (typeof cell.v === 'number') {
+    const d = new Date(Math.round((cell.v - 25569) * 86400 * 1000))
+    return d.toISOString().slice(0, 10)
+  }
+  return null
+}
+
+function parseValue(raw) {
+  if (raw == null || raw === '') return null
+  const s = String(raw).trim()
+  if (s === '') return null
+  const ltMatch = s.match(/^<\s*([\d.,]+)/)
+  if (ltMatch) return { value: parseFloat(ltMatch[1].replace(',', '.')), lessThan: true }
+  const gtMatch = s.match(/^>\s*([\d.,]+)/)
+  if (gtMatch) return { value: parseFloat(gtMatch[1].replace(',', '.')), greaterThan: true }
+  const num = parseFloat(s.replace(',', '.'))
+  return isNaN(num) ? null : { value: num }
+}
+
+async function parse1177Excel(file) {
+  return new Promise((resolve, reject) => {
+    if (file.size > 5 * 1024 * 1024) {
+      reject(new Error('Filen är för stor (max 5 MB).'))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result)
+        const wb = XLSX.read(data, { type: 'array', cellDates: true })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+
+        // Read raw first row headers
+        const headers = []
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const cell = ws[XLSX.utils.encode_cell({ r: 0, c })]
+          headers.push(cell ? String(cell.v || '') : '')
+        }
+
+        // Validate 1177 structure
+        if (!headers[0].toLowerCase().includes('datum')) {
+          reject(new Error('Det verkar inte vara en fil från 1177. Kontrollera att du exporterat provsvar från Min Vård på 1177.se.'))
+          return
+        }
+
+        // Map columns
+        const colMap = {}
+        for (let c = 1; c < headers.length; c++) {
+          const field = matchColumn(headers[c])
+          if (field) colMap[c] = field
+        }
+
+        if (Object.keys(colMap).length === 0) {
+          reject(new Error('Inga kända provsvar hittades i filen. Kontrollera att det är rätt fil.'))
+          return
+        }
+
+        // Parse data rows
+        const results = []
+        for (let r = 1; r <= range.e.r; r++) {
+          const dateCell = ws[XLSX.utils.encode_cell({ r, c: 0 })]
+          if (!dateCell) continue
+          const date = parseExcelDate(dateCell)
+          if (!date) continue
+
+          for (const [col, field] of Object.entries(colMap)) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c: parseInt(col) })]
+            if (!cell) continue
+            const parsed = parseValue(cell.v)
+            if (parsed !== null) {
+              results.push({ date, field, value: parsed.value })
+            }
+          }
+        }
+
+        if (results.length === 0) {
+          reject(new Error('Inga värden hittades i filen.'))
+          return
+        }
+
+        resolve(results)
+      } catch (err) {
+        reject(new Error('Kunde inte läsa filen: ' + err.message))
+      }
+    }
+    reader.onerror = () => reject(new Error('Filläsning misslyckades.'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+// ── Lab Chart ─────────────────────────────────────────────────────────────────
 
 function LabChart({ type, labs }) {
   const typeData = LAB_TYPES.find(t => t.value === type)
@@ -29,10 +162,7 @@ function LabChart({ type, labs }) {
       data: data.map(d => d.value),
       borderColor: '#1d4ed8',
       backgroundColor: 'rgba(29, 78, 216, 0.08)',
-      borderWidth: 2,
-      pointRadius: 5,
-      pointHoverRadius: 7,
-      tension: 0.2,
+      borderWidth: 2, pointRadius: 5, pointHoverRadius: 7, tension: 0.2,
     }
   ]
 
@@ -41,10 +171,7 @@ function LabChart({ type, labs }) {
       label: `Övre gräns (${typeData.refMax})`,
       data: data.map(() => typeData.refMax),
       borderColor: 'rgba(220, 38, 38, 0.5)',
-      borderDash: [6, 4],
-      borderWidth: 1.5,
-      pointRadius: 0,
-      tension: 0,
+      borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0,
     })
   }
   if (typeData.refMin != null) {
@@ -52,31 +179,19 @@ function LabChart({ type, labs }) {
       label: `Nedre gräns (${typeData.refMin})`,
       data: data.map(() => typeData.refMin),
       borderColor: 'rgba(22, 163, 74, 0.5)',
-      borderDash: [6, 4],
-      borderWidth: 1.5,
-      pointRadius: 0,
-      tension: 0,
+      borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0,
     })
   }
 
   const options = {
-    responsive: true,
-    maintainAspectRatio: false,
+    responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { display: datasets.length > 1, position: 'bottom', labels: { boxWidth: 14, font: { size: 11 }, padding: 8 } },
-      tooltip: {
-        callbacks: {
-          label: item => item.datasetIndex === 0 ? `${item.raw} ${typeData.unit}` : item.dataset.label
-        }
-      }
+      tooltip: { callbacks: { label: item => item.datasetIndex === 0 ? `${item.raw} ${typeData.unit}` : item.dataset.label } }
     },
     scales: {
       x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
-      y: {
-        ticks: { font: { size: 11 }, callback: v => `${v}` },
-        title: { display: true, text: typeData.unit, font: { size: 11 } },
-        grid: { color: 'rgba(0,0,0,0.06)' }
-      }
+      y: { ticks: { font: { size: 11 } }, title: { display: true, text: typeData.unit, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }
     }
   }
 
@@ -100,11 +215,15 @@ function LabChart({ type, labs }) {
   )
 }
 
+// ── Main LabsView ─────────────────────────────────────────────────────────────
+
 export default function LabsView({ onDataChange }) {
   const [labs, setLabs] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [viewMode, setViewMode] = useState('list')
+  const [importState, setImportState] = useState(null)
+  const fileRef = useRef()
 
   function emptyForm() {
     return {
@@ -148,13 +267,50 @@ export default function LabsView({ onDataChange }) {
     await load(); onDataChange?.()
   }
 
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportState({ loading: true })
+    try {
+      const results = await parse1177Excel(file)
+      const dates = [...new Set(results.map(r => r.date))]
+      setImportState({ results, dates, imported: null, error: null })
+    } catch (err) {
+      setImportState({ error: err.message, results: null })
+    }
+    e.target.value = ''
+  }
+
+  async function doImport(overwrite) {
+    if (!importState?.results) return
+    let count = 0
+    for (const item of importState.results) {
+      const exists = labs.find(l => l.date === item.date && l.type === item.field)
+      if (exists && !overwrite) continue
+      const labType = LAB_TYPES.find(t => t.value === item.field)
+      await addLab({
+        date: item.date,
+        type: item.field,
+        value: item.value,
+        unit: labType?.unit || '',
+        note: null
+      })
+      count++
+    }
+    setImportState(s => ({ ...s, imported: count }))
+    await load(); onDataChange?.()
+  }
+
+  const hasConflict = importState?.results
+    ? labs.some(l => importState.results.find(r => r.date === l.date && r.field === l.type))
+    : false
+
   const grouped = {}
   for (const lab of labs) {
     if (!grouped[lab.date]) grouped[lab.date] = []
     grouped[lab.date].push(lab)
   }
 
-  // Lab types that have at least one value
   const typesWithData = LAB_TYPES.filter(t => labs.some(l => l.type === t.value))
 
   return (
@@ -169,9 +325,50 @@ export default function LabsView({ onDataChange }) {
         <p className="card-desc">Blodprovsvärden används i SCORE2-riskberäkning.</p>
         <div className="nonhdl-tip">
           💡 <strong>Non-HDL-kolesterol</strong> (totalkolesterol − HDL) visar de "farliga fetterna" bäst.
-          Fråga din läkare om ditt non-HDL-värde!
         </div>
+        <button className="btn-import-1177" onClick={() => fileRef.current?.click()}>
+          ⬆ Importera provsvar från 1177
+        </button>
+        <input ref={fileRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileSelect} />
       </div>
+
+      {/* Import panel */}
+      {importState && (
+        <div className="card import-card">
+          {importState.loading && <p>Läser fil…</p>}
+          {importState.error && <p className="import-error">⚠️ {importState.error}</p>}
+          {importState.results && importState.imported == null && (
+            <>
+              <p className="import-summary">
+                Hittade <strong>{importState.results.length}</strong> värden från{' '}
+                <strong>{importState.dates.length}</strong> provtagningstillfälle{importState.dates.length !== 1 ? 'n' : ''}{' '}
+                ({importState.dates[importState.dates.length - 1] || ''}–{importState.dates[0] || ''}).
+              </p>
+              {hasConflict ? (
+                <>
+                  <p className="import-question">Några datum finns redan — vill du skriva över?</p>
+                  <div className="import-btns">
+                    <button className="btn-primary" onClick={() => doImport(true)}>Ja, skriv över</button>
+                    <button className="btn-secondary" onClick={() => doImport(false)}>Nej, bara nya</button>
+                    <button className="btn-link" onClick={() => setImportState(null)}>Avbryt</button>
+                  </div>
+                </>
+              ) : (
+                <div className="import-btns">
+                  <button className="btn-primary" onClick={() => doImport(false)}>Importera alla</button>
+                  <button className="btn-link" onClick={() => setImportState(null)}>Avbryt</button>
+                </div>
+              )}
+            </>
+          )}
+          {importState.imported != null && (
+            <>
+              <p className="import-done">✓ Importerade <strong>{importState.imported}</strong> värden.</p>
+              <button className="btn-link" onClick={() => setImportState(null)}>Stäng</button>
+            </>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <div className="card">
@@ -180,21 +377,13 @@ export default function LabsView({ onDataChange }) {
             <div className="form-row">
               <div className="form-group">
                 <label>Datum *</label>
-                <input
-                  type="date"
-                  value={form.date}
+                <input type="date" value={form.date}
                   onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  required
-                  className="form-input"
-                />
+                  required className="form-input" />
               </div>
               <div className="form-group">
                 <label>Analys *</label>
-                <select
-                  value={form.type}
-                  onChange={e => handleTypeChange(e.target.value)}
-                  className="form-input"
-                >
+                <select value={form.type} onChange={e => handleTypeChange(e.target.value)} className="form-input">
                   {LAB_TYPES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
@@ -204,35 +393,22 @@ export default function LabsView({ onDataChange }) {
             <div className="form-row">
               <div className="form-group">
                 <label>Värde *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.value}
+                <input type="number" step="0.01" value={form.value}
                   onChange={e => setForm(f => ({ ...f, value: e.target.value }))}
-                  placeholder="0.0"
-                  required
-                  className="form-input"
-                />
+                  placeholder="0.0" required className="form-input" />
               </div>
               <div className="form-group">
                 <label>Enhet</label>
-                <input
-                  type="text"
-                  value={form.unit}
+                <input type="text" value={form.unit}
                   onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-                  className="form-input"
-                />
+                  className="form-input" />
               </div>
             </div>
             <div className="form-group">
               <label>Anteckning</label>
-              <input
-                type="text"
-                value={form.note}
+              <input type="text" value={form.note}
                 onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                placeholder="Valfri notering..."
-                className="form-input"
-              />
+                placeholder="Valfri notering..." className="form-input" />
             </div>
             <div className="form-actions">
               <button type="submit" className="btn-primary">Spara</button>
@@ -245,28 +421,19 @@ export default function LabsView({ onDataChange }) {
       {labs.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🔬</div>
-          <p>Inga provsvar registrerade.<br />Lägg till provresultat från ditt senaste läkarbesök.</p>
+          <p>Inga provsvar registrerade.<br />Lägg till värden manuellt eller importera från 1177.</p>
         </div>
       ) : (
         <>
-          {/* View toggle */}
           <div className="lab-view-toggle">
-            <button
-              className={`lab-toggle-btn ${viewMode === 'list' ? 'lab-toggle-active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              Lista
-            </button>
-            <button
-              className={`lab-toggle-btn ${viewMode === 'graph' ? 'lab-toggle-active' : ''}`}
-              onClick={() => setViewMode('graph')}
-            >
-              Grafer
-            </button>
+            <button className={`lab-toggle-btn ${viewMode === 'list' ? 'lab-toggle-active' : ''}`}
+              onClick={() => setViewMode('list')}>Lista</button>
+            <button className={`lab-toggle-btn ${viewMode === 'graph' ? 'lab-toggle-active' : ''}`}
+              onClick={() => setViewMode('graph')}>Grafer</button>
           </div>
 
           {viewMode === 'list' ? (
-            Object.entries(grouped).map(([date, dateLabs]) => (
+            Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([date, dateLabs]) => (
               <div key={date} className="card">
                 <h3 className="card-title">{formatDateSv(date)}</h3>
                 <div className="lab-list">
