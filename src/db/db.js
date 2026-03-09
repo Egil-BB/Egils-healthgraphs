@@ -50,9 +50,11 @@ function getDB() {
 
 export async function addMeasurement(data) {
   const db = await getDB()
-  const now = new Date()
+  // Allow custom date/time override for historical entry
+  const now = data.customDateTime ? new Date(data.customDateTime) : new Date()
+  const { customDateTime, ...rest } = data
   const record = {
-    ...data,
+    ...rest,
     timestamp: now.toISOString(),
     date: now.toISOString().slice(0, 10),
     timeOfDay: getTimeOfDay(now)

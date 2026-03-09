@@ -1782,6 +1782,128 @@ html, body, #root { height: 100%; }
 .gut-chip-lax { background: #fef3c7; color: #92400e; }
 .gut-notes { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
+/* ─── Module selector (Settings) ────────────────────────────────────────── */
+.module-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.module-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--bg);
+  cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.module-item:hover { border-color: var(--primary-mid); background: var(--primary-light); }
+.module-item-locked { cursor: default; opacity: 0.7; }
+.module-item-locked:hover { border-color: var(--border); background: var(--bg); }
+.module-icon { font-size: 22px; width: 28px; text-align: center; }
+.module-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.module-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.module-desc { font-size: 12px; color: var(--text-muted); }
+.module-toggle {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--border); font-size: 14px; color: var(--text-muted);
+  transition: background 0.15s;
+}
+.module-toggle-on { background: var(--primary); color: white; }
+.module-toggle-locked { background: #e5e7eb; color: #9ca3af; }
+
+/* ─── Install Banner ─────────────────────────────────────────────────────── */
+.install-banner {
+  margin: 0 0 8px 0; border-radius: 12px; padding: 12px 14px;
+  position: relative; font-size: 14px;
+}
+.install-banner-info { background: #eff6ff; border: 1.5px solid #93c5fd; }
+.install-banner-warn { background: #fffbeb; border: 1.5px solid #fcd34d; }
+.install-banner-body { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.install-banner-icon { font-size: 22px; flex-shrink: 0; }
+.install-banner-text { display: flex; flex-direction: column; gap: 3px; }
+.install-banner-text strong { font-size: 14px; color: var(--text); }
+.install-banner-text span { font-size: 13px; color: var(--text-muted); }
+.install-banner-close {
+  position: absolute; top: 10px; right: 10px;
+  background: none; border: none; font-size: 16px; color: var(--text-muted);
+  cursor: pointer; padding: 2px 6px; border-radius: 6px; line-height: 1;
+}
+.install-banner-close:hover { background: rgba(0,0,0,0.06); }
+.install-banner-cta {
+  display: block; width: 100%; padding: 10px;
+  background: var(--primary); color: white; border: none;
+  border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+  margin-top: 6px;
+}
+.install-banner-dismiss-btn {
+  display: block; width: 100%; padding: 9px;
+  background: transparent; color: var(--primary);
+  border: 1.5px solid var(--primary); border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px;
+}
+.install-banner-manual { font-size: 13px; color: var(--text-muted); margin: 4px 0 0 0; }
+.install-guide { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px 0; }
+.install-guide-step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.install-guide-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--primary); color: white; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ─── 1177 import help ───────────────────────────────────────────────────── */
+.import-1177-section { display: flex; flex-direction: column; gap: 8px; }
+.import-1177-help {
+  font-size: 13px; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px;
+}
+.import-1177-help summary {
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  color: var(--primary); padding: 6px 0; list-style: none;
+}
+.import-1177-help summary::-webkit-details-marker { display: none; }
+.import-1177-steps {
+  margin: 6px 0 4px 0; padding-left: 18px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.import-1177-steps li { font-size: 13px; color: var(--text); }
+.import-1177-note {
+  font-size: 12px; color: var(--text-muted);
+  background: var(--primary-light); border-radius: 6px;
+  padding: 6px 8px; margin: 6px 0 4px 0;
+}
+
+/* ─── Custom time row (historical BP entry) ──────────────────────────────── */
+.custom-time-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 8px 0; padding: 10px 12px;
+  background: var(--primary-light); border-radius: 10px;
+  border: 1.5px solid var(--primary-mid);
+}
+.custom-time-label { font-size: 13px; font-weight: 600; color: var(--text-muted); min-width: 72px; }
+.custom-time-input { flex: 1; min-width: 120px; max-width: 160px; }
+
+/* ─── Configurable laxatives ─────────────────────────────────────────────── */
+.lax-manage-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.lax-manage-btn {
+  font-size: 12px; color: var(--primary); background: none;
+  border: none; cursor: pointer; text-decoration: underline; padding: 0;
+}
+.lax-edit-form {
+  background: var(--primary-light); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.lax-edit-form p { font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 6px 0; }
+.lax-current { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.lax-tag {
+  display: flex; align-items: center; gap: 4px;
+  background: white; border: 1.5px solid var(--border); border-radius: 20px;
+  padding: 3px 8px; font-size: 13px;
+}
+.lax-tag-remove {
+  background: none; border: none; color: #dc2626; font-size: 15px;
+  cursor: pointer; padding: 0; line-height: 1;
+}
+.lax-add-row { display: flex; gap: 6px; }
+.lax-add-input { flex: 1; }
+
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 button { touch-action: manipulation; }
 

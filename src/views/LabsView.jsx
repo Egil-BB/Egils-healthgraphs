@@ -326,10 +326,23 @@ export default function LabsView({ onDataChange }) {
         <div className="nonhdl-tip">
           💡 <strong>Non-HDL-kolesterol</strong> (totalkolesterol − HDL) visar de "farliga fetterna" bäst.
         </div>
-        <button className="btn-import-1177" onClick={() => fileRef.current?.click()}>
-          ⬆ Importera provsvar från 1177
-        </button>
-        <input ref={fileRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileSelect} />
+        <div className="import-1177-section">
+          <button className="btn-import-1177" onClick={() => fileRef.current?.click()}>
+            ⬆ Importera provsvar från 1177 (.xlsx)
+          </button>
+          <input ref={fileRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileSelect} />
+          <details className="import-1177-help">
+            <summary>Hur hittar jag filen på 1177? ▾</summary>
+            <ol className="import-1177-steps">
+              <li>Gå till <strong>1177.se</strong> och logga in med BankID</li>
+              <li>Välj <strong>Min vård → Journalen → Provsvar</strong></li>
+              <li>Tryck på <strong>"Ladda ner provsvar"</strong> (knapp i övre högra hörnet)</li>
+              <li>Välj format <strong>Excel (.xlsx)</strong> och ladda ner filen</li>
+              <li>Ladda upp filen här med knappen ovan</li>
+            </ol>
+            <p className="import-1177-note">Importeras automatiskt: totalkolesterol, LDL, HDL, triglycerider, glukos, HbA1c, Hb, ferritin, LPK, kreatinin, eGFR, albumin/krea, ALAT, TSH, CRP.</p>
+          </details>
+        </div>
       </div>
 
       {/* Import panel */}

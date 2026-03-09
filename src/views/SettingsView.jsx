@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react'
 import { exportAllData, importData, getProfile, setProfile, clearAllData } from '../db/db'
+import { ALL_MODULES, DEFAULT_ENABLED_IDS } from '../utils/modules'
 
-export default function SettingsView({ onDataChange }) {
+export default function SettingsView({ onDataChange, enabledModules, setEnabledModules }) {
   const [importing, setImporting] = useState(false)
   const [msg, setMsg] = useState(null)
   const [profile, setProfileState] = useState({ name: '', birthdate: '', sex: 'male', smoking: false, height: '' })
   const [profileSaved, setProfileSaved] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [showDeleteForm, setShowDeleteForm] = useState(false)
+  const [localModules, setLocalModules] = useState(enabledModules || DEFAULT_ENABLED_IDS)
 
   useEffect(() => {
     getProfile('patientProfile').then(p => {
       if (p) setProfileState(prev => ({ ...prev, ...p }))
     })
   }, [])
+
+  useEffect(() => {
+    setLocalModules(enabledModules || DEFAULT_ENABLED_IDS)
+  }, [enabledModules])
 
   async function handleProfileSave(e) {
     e.preventDefault()
@@ -65,6 +71,17 @@ export default function SettingsView({ onDataChange }) {
     onDataChange?.()
     setMsg('Alla data raderade.')
     setTimeout(() => setMsg(null), 4000)
+  }
+
+  function toggleModule(id) {
+    const mod = ALL_MODULES.find(m => m.id === id)
+    if (mod?.alwaysOn) return
+    const next = localModules.includes(id)
+      ? localModules.filter(m => m !== id)
+      : [...localModules, id]
+    setLocalModules(next)
+    setEnabledModules?.(next)
+    setProfile('enabledModules', next)
   }
 
   return (
@@ -124,7 +141,7 @@ export default function SettingsView({ onDataChange }) {
                 checked={profile.smoking || false}
                 onChange={e => setProfileState(p => ({ ...p, smoking: e.target.checked }))}
               />
-              Rökare (standard – åsidosätts av levnadsvanekäten)
+              Rökare (åsidosätts av levnadsvanekäten)
             </label>
           </div>
           <button type="submit" className={`btn-primary ${profileSaved ? 'btn-saved' : ''}`}>
@@ -133,9 +150,36 @@ export default function SettingsView({ onDataChange }) {
         </form>
       </div>
 
+      {/* Module selector */}
+      <div className="card">
+        <h3 className="card-title">Aktiva moduler</h3>
+        <p className="card-desc">Välj vilka flikar som ska visas i navigeringen. Grå = alltid på.</p>
+        <div className="module-list">
+          {ALL_MODULES.map(mod => {
+            const isEnabled = mod.alwaysOn || localModules.includes(mod.id)
+            return (
+              <div
+                key={mod.id}
+                className={`module-item ${mod.alwaysOn ? 'module-item-locked' : ''}`}
+                onClick={() => toggleModule(mod.id)}
+              >
+                <span className="module-icon">{mod.icon}</span>
+                <div className="module-info">
+                  <span className="module-name">{mod.label}</span>
+                  <span className="module-desc">{mod.desc}</span>
+                </div>
+                <div className={`module-toggle ${isEnabled ? 'module-toggle-on' : ''} ${mod.alwaysOn ? 'module-toggle-locked' : ''}`}>
+                  {mod.alwaysOn ? '🔒' : isEnabled ? '✓' : ''}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="card">
         <h3 className="card-title">Säkerhetskopia</h3>
-        <p className="card-desc">Exportera dina data som JSON-fil.</p>
+        <p className="card-desc">Exportera dina data som JSON-fil. Viktigt om du byter telefon.</p>
         <button className="btn-primary" onClick={handleExport}>⬇ Exportera data</button>
       </div>
 
@@ -191,7 +235,7 @@ export default function SettingsView({ onDataChange }) {
           Ersätter inte medicinsk bedömning. Diskutera alltid dina värden med din läkare.
         </p>
         <p className="card-desc" style={{ marginTop: 8 }}>
-          All data lagras lokalt (IndexedDB). Ingenting skickas externt.
+          All data lagras lokalt på din enhet. Ingenting skickas externt.
         </p>
       </div>
     </div>

@@ -25,6 +25,12 @@ export default function RegisterView({ onDataChange, refreshKey }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showNote, setShowNote] = useState(false)
+  const [useCustomTime, setUseCustomTime] = useState(false)
+  const [customDate, setCustomDate] = useState(new Date().toISOString().slice(0, 10))
+  const [customTime, setCustomTime] = useState(() => {
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
 
   const load = useCallback(async () => {
     const all = await getAllMeasurements()
@@ -48,13 +54,16 @@ export default function RegisterView({ onDataChange, refreshKey }) {
     e.preventDefault()
     if (!sys || !dia || sys < 50 || sys > 300 || dia < 30 || dia > 200) return
     setSaving(true)
+    const customDateTime = useCustomTime ? `${customDate}T${customTime}:00` : undefined
     await addMeasurement({
       sys: Number(sys),
       dia: Number(dia),
       pulse: pulse ? parseInt(pulse) : null,
-      note: note.trim() || null
+      note: note.trim() || null,
+      customDateTime,
     })
     setPulse(''); setNote(''); setShowNote(false)
+    setUseCustomTime(false)
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     await load()
@@ -175,6 +184,26 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             <button type="button" className="btn-link" onClick={() => setShowNote(true)}>
               + Lägg till anteckning
             </button>
+          )}
+
+          {/* Optional custom date/time for historical entry */}
+          {!useCustomTime ? (
+            <button type="button" className="btn-link" onClick={() => setUseCustomTime(true)}>
+              🕐 Ange annan tid (historisk mätning)
+            </button>
+          ) : (
+            <div className="custom-time-row">
+              <label className="custom-time-label">Datum & tid</label>
+              <input type="date" value={customDate}
+                onChange={e => setCustomDate(e.target.value)}
+                className="form-input custom-time-input" />
+              <input type="time" value={customTime}
+                onChange={e => setCustomTime(e.target.value)}
+                className="form-input custom-time-input" />
+              <button type="button" className="btn-link" onClick={() => setUseCustomTime(false)}>
+                Avbryt
+              </button>
+            </div>
           )}
 
           <button type="submit" className={`btn-save ${saved ? 'btn-saved' : ''}`} disabled={saving}>
