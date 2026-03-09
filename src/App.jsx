@@ -9,6 +9,7 @@ import LifestyleView from './views/LifestyleView'
 import ScoreView from './views/ScoreView'
 import KnowledgeView from './views/KnowledgeView'
 import SettingsView from './views/SettingsView'
+import DiaryView from './views/DiaryView'
 import { getAllLifestyle } from './db/db'
 
 const REGISTER_TABS = [
@@ -109,6 +110,10 @@ export default function App() {
 
         {tab === 'score' && (
           <ScoreView refreshKey={refreshKey} />
+        )}
+
+        {tab === 'diary' && (
+          <DiaryView onDataChange={handleDataChange} />
         )}
 
         {tab === 'info' && (

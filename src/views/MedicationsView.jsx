@@ -1,96 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { addMedication, getAllMedications, deleteMedication, updateMedication } from '../db/db'
 import { formatDateSv } from '../utils/bp'
-
-const COMMON_MEDICATIONS = [
-  {
-    class: 'ACE-hämmare',
-    drugs: [
-      { name: 'Enalapril', strengths: ['2,5 mg', '5 mg', '10 mg', '20 mg'], fass: 'enalapril' },
-      { name: 'Ramipril', strengths: ['1,25 mg', '2,5 mg', '5 mg', '10 mg'], fass: 'ramipril' },
-      { name: 'Lisinopril', strengths: ['2,5 mg', '5 mg', '10 mg', '20 mg'], fass: 'lisinopril' },
-      { name: 'Perindopril', strengths: ['2 mg', '4 mg', '8 mg'], fass: 'perindopril' },
-    ]
-  },
-  {
-    class: 'ARB (angiotensin II-antagonist)',
-    drugs: [
-      { name: 'Losartan', strengths: ['25 mg', '50 mg', '100 mg'], fass: 'losartan' },
-      { name: 'Valsartan', strengths: ['40 mg', '80 mg', '160 mg', '320 mg'], fass: 'valsartan' },
-      { name: 'Kandesartan', strengths: ['4 mg', '8 mg', '16 mg', '32 mg'], fass: 'kandesartan' },
-      { name: 'Irbesartan', strengths: ['75 mg', '150 mg', '300 mg'], fass: 'irbesartan' },
-      { name: 'Olmesartan', strengths: ['10 mg', '20 mg', '40 mg'], fass: 'olmesartan' },
-      { name: 'Telmisartan', strengths: ['20 mg', '40 mg', '80 mg'], fass: 'telmisartan' },
-    ]
-  },
-  {
-    class: 'Kalciumantagonist',
-    drugs: [
-      { name: 'Amlodipin', strengths: ['2,5 mg', '5 mg', '10 mg'], fass: 'amlodipin' },
-      { name: 'Felodipin', strengths: ['2,5 mg', '5 mg', '10 mg'], fass: 'felodipin' },
-      { name: 'Lerkanidipin', strengths: ['10 mg', '20 mg'], fass: 'lerkanidipin' },
-    ]
-  },
-  {
-    class: 'Diuretika',
-    drugs: [
-      { name: 'Hydroklortiazid', strengths: ['12,5 mg', '25 mg'], fass: 'hydroklortiazid' },
-      { name: 'Klortalidon', strengths: ['12,5 mg', '25 mg', '50 mg'], fass: 'klortalidon' },
-      { name: 'Indapamid', strengths: ['1,25 mg', '2,5 mg'], fass: 'indapamid' },
-      { name: 'Spironolakton', strengths: ['25 mg', '50 mg', '100 mg'], fass: 'spironolakton' },
-      { name: 'Eplerenon', strengths: ['25 mg', '50 mg'], fass: 'eplerenon' },
-    ]
-  },
-  {
-    class: 'Betablockerare',
-    drugs: [
-      { name: 'Metoprolol', strengths: ['25 mg', '50 mg', '100 mg', '200 mg'], fass: 'metoprolol' },
-      { name: 'Bisoprolol', strengths: ['1,25 mg', '2,5 mg', '5 mg', '10 mg'], fass: 'bisoprolol' },
-      { name: 'Atenolol', strengths: ['25 mg', '50 mg', '100 mg'], fass: 'atenolol' },
-      { name: 'Karvedilol', strengths: ['3,125 mg', '6,25 mg', '12,5 mg', '25 mg'], fass: 'karvedilol' },
-    ]
-  },
-  {
-    class: 'Kombinationspreparat',
-    drugs: [
-      { name: 'Losartan/Hydroklortiazid', strengths: ['50/12,5 mg', '100/12,5 mg', '100/25 mg'], fass: 'losartan+hydroklortiazid' },
-      { name: 'Valsartan/Hydroklortiazid', strengths: ['80/12,5 mg', '160/12,5 mg', '160/25 mg', '320/25 mg'], fass: 'valsartan+hydroklortiazid' },
-      { name: 'Kandesartan/Hydroklortiazid', strengths: ['8/12,5 mg', '16/12,5 mg', '32/25 mg'], fass: 'kandesartan+hydroklortiazid' },
-      { name: 'Amlodipin/Valsartan', strengths: ['5/80 mg', '5/160 mg', '10/160 mg', '5/320 mg', '10/320 mg'], fass: 'amlodipin+valsartan' },
-      { name: 'Amlodipin/Ramipril', strengths: ['5/5 mg', '5/10 mg', '10/5 mg', '10/10 mg'], fass: 'amlodipin+ramipril' },
-      { name: 'Olmesartan/Amlodipin', strengths: ['20/5 mg', '40/5 mg', '40/10 mg'], fass: 'olmesartan+amlodipin' },
-    ]
-  },
-  {
-    class: 'Statiner',
-    drugs: [
-      { name: 'Atorvastatin', strengths: ['10 mg', '20 mg', '40 mg', '80 mg'], fass: 'atorvastatin' },
-      { name: 'Rosuvastatin', strengths: ['5 mg', '10 mg', '20 mg', '40 mg'], fass: 'rosuvastatin' },
-      { name: 'Simvastatin', strengths: ['10 mg', '20 mg', '40 mg'], fass: 'simvastatin' },
-      { name: 'Pravastatin', strengths: ['10 mg', '20 mg', '40 mg'], fass: 'pravastatin' },
-      { name: 'Pitavastatin', strengths: ['1 mg', '2 mg', '4 mg'], fass: 'pitavastatin' },
-    ]
-  },
-  {
-    class: 'Centralt verkande / övrigt',
-    drugs: [
-      { name: 'Moxonidin', strengths: ['0,2 mg', '0,3 mg', '0,4 mg'], fass: 'moxonidin' },
-      { name: 'Doxazosin', strengths: ['1 mg', '2 mg', '4 mg', '8 mg'], fass: 'doxazosin' },
-    ]
-  },
-]
-
-function fassUrl(query) {
-  return `https://www.fass.se/LIF/result?query=${encodeURIComponent(query)}&userType=2`
-}
-
-function findDrug(name) {
-  for (const cls of COMMON_MEDICATIONS) {
-    const drug = cls.drugs.find(d => d.name === name)
-    if (drug) return drug
-  }
-  return null
-}
+import { COMMON_MEDICATIONS, fassUrl, findDrug, searchDrugs } from '../utils/medications'
 
 export default function MedicationsView({ onDataChange }) {
   const [medications, setMedications] = useState([])
@@ -98,6 +9,9 @@ export default function MedicationsView({ onDataChange }) {
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState(emptyForm())
   const [pickerDrug, setPickerDrug] = useState(null)
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const inputRef = useRef(null)
 
   function emptyForm() {
     return {
@@ -124,6 +38,7 @@ export default function MedicationsView({ onDataChange }) {
       await addMedication(form)
     }
     setForm(emptyForm()); setShowForm(false); setEditId(null); setPickerDrug(null)
+    setSuggestions([]); setShowSuggestions(false)
     await load(); onDataChange?.()
   }
 
@@ -137,19 +52,33 @@ export default function MedicationsView({ onDataChange }) {
     setForm({ name: med.name, startDate: med.startDate, dose: med.dose || '', note: med.note || '' })
     setPickerDrug(findDrug(med.name))
     setEditId(med.id); setShowForm(true)
+    setSuggestions([]); setShowSuggestions(false)
   }
 
   function handleCancel() {
     setForm(emptyForm()); setShowForm(false); setEditId(null); setPickerDrug(null)
+    setSuggestions([]); setShowSuggestions(false)
   }
 
-  function handlePresetSelect(value) {
-    if (!value) { setPickerDrug(null); return }
-    const drug = findDrug(value)
-    if (drug) {
-      setPickerDrug(drug)
-      setForm(f => ({ ...f, name: drug.name, dose: '' }))
+  function handleNameChange(val) {
+    setForm(f => ({ ...f, name: val }))
+    if (val.length >= 2) {
+      const found = searchDrugs(val)
+      setSuggestions(found)
+      setShowSuggestions(found.length > 0)
+    } else {
+      setSuggestions([])
+      setShowSuggestions(false)
     }
+    // Clear picker drug if name changes away from preset
+    if (!findDrug(val)) setPickerDrug(null)
+  }
+
+  function handleSelectSuggestion(drug) {
+    setPickerDrug(drug)
+    setForm(f => ({ ...f, name: drug.name, dose: '' }))
+    setSuggestions([])
+    setShowSuggestions(false)
   }
 
   return (
@@ -161,7 +90,7 @@ export default function MedicationsView({ onDataChange }) {
             <button className="btn-add" onClick={() => setShowForm(true)}>+ Lägg till</button>
           )}
         </div>
-        <p className="card-desc">Mediciner visas som markörer i blodtrycksgrafen.</p>
+        <p className="card-desc">Mediciner visas som markörer i blodtrycks-, kolesterol- och sockergrafen.</p>
       </div>
 
       {showForm && (
@@ -169,23 +98,36 @@ export default function MedicationsView({ onDataChange }) {
           <h3 className="card-title">{editId ? 'Redigera medicin' : 'Ny medicin'}</h3>
           <form onSubmit={handleSubmit} className="med-form">
 
-            {/* Preset picker */}
-            <div className="form-group">
-              <label>Välj vanligt blodtrycksläkemedel</label>
-              <select
+            {/* Autocomplete name input */}
+            <div className="form-group" style={{ position: 'relative' }}>
+              <label>Namn *</label>
+              <input
+                ref={inputRef}
+                type="text"
+                value={form.name}
+                onChange={e => handleNameChange(e.target.value)}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder="Börja skriva läkemedelsnamn..."
+                required
                 className="form-input"
-                value={pickerDrug?.name || ''}
-                onChange={e => handlePresetSelect(e.target.value)}
-              >
-                <option value="">– eller skriv eget namn nedan –</option>
-                {COMMON_MEDICATIONS.map(cls => (
-                  <optgroup key={cls.class} label={cls.class}>
-                    {cls.drugs.map(drug => (
-                      <option key={drug.name} value={drug.name}>{drug.name}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+                autoComplete="off"
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="autocomplete-dropdown">
+                  {suggestions.map(drug => (
+                    <button
+                      key={drug.name}
+                      type="button"
+                      className="autocomplete-item"
+                      onMouseDown={() => handleSelectSuggestion(drug)}
+                    >
+                      <span className="autocomplete-drug-name">{drug.name}</span>
+                      <span className="autocomplete-drug-class">{drug.drugClass}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Strength pills when preset selected */}
@@ -215,17 +157,6 @@ export default function MedicationsView({ onDataChange }) {
               </div>
             )}
 
-            <div className="form-group">
-              <label>Namn *</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="t.ex. Enalapril"
-                required
-                className="form-input"
-              />
-            </div>
             <div className="form-row">
               <div className="form-group">
                 <label>Startdatum *</label>
@@ -237,16 +168,18 @@ export default function MedicationsView({ onDataChange }) {
                   className="form-input"
                 />
               </div>
-              <div className="form-group">
-                <label>Dos</label>
-                <input
-                  type="text"
-                  value={form.dose}
-                  onChange={e => setForm(f => ({ ...f, dose: e.target.value }))}
-                  placeholder="t.ex. 10 mg × 1"
-                  className="form-input"
-                />
-              </div>
+              {!pickerDrug && (
+                <div className="form-group">
+                  <label>Dos</label>
+                  <input
+                    type="text"
+                    value={form.dose}
+                    onChange={e => setForm(f => ({ ...f, dose: e.target.value }))}
+                    placeholder="t.ex. 10 mg × 1"
+                    className="form-input"
+                  />
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label>Anteckning</label>
@@ -271,37 +204,40 @@ export default function MedicationsView({ onDataChange }) {
       {medications.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">💊</div>
-          <p>Inga mediciner registrerade.<br />Lägg till dina blodtrycksmediciner för att se dem i grafen.</p>
+          <p>Inga mediciner registrerade.<br />Lägg till dina mediciner för att se dem i graferna.</p>
         </div>
       ) : (
         <div className="card">
           <div className="med-list">
-            {medications.map(med => (
-              <div key={med.id} className="med-item">
-                <div className="med-main">
-                  <span className="med-name">{med.name}</span>
-                  {med.dose && <span className="med-dose">{med.dose}</span>}
+            {medications.map(med => {
+              const drug = findDrug(med.name)
+              return (
+                <div key={med.id} className="med-item">
+                  <div className="med-main">
+                    <span className="med-name">{med.name}</span>
+                    {med.dose && <span className="med-dose">{med.dose}</span>}
+                  </div>
+                  <div className="med-meta">
+                    <span className="med-date">Startdatum: {formatDateSv(med.startDate)}</span>
+                    {med.note && <span className="med-note">📝 {med.note}</span>}
+                  </div>
+                  <div className="med-actions">
+                    {drug && (
+                      <a
+                        href={fassUrl(drug.fass)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-fass"
+                      >
+                        FASS ↗
+                      </a>
+                    )}
+                    <button className="btn-edit" onClick={() => handleEdit(med)}>Redigera</button>
+                    <button className="btn-delete" onClick={() => handleDelete(med.id)}>×</button>
+                  </div>
                 </div>
-                <div className="med-meta">
-                  <span className="med-date">Startdatum: {formatDateSv(med.startDate)}</span>
-                  {med.note && <span className="med-note">📝 {med.note}</span>}
-                </div>
-                <div className="med-actions">
-                  {findDrug(med.name) && (
-                    <a
-                      href={fassUrl(findDrug(med.name).fass)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-fass"
-                    >
-                      FASS ↗
-                    </a>
-                  )}
-                  <button className="btn-edit" onClick={() => handleEdit(med)}>Redigera</button>
-                  <button className="btn-delete" onClick={() => handleDelete(med.id)}>×</button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
