@@ -74,8 +74,6 @@ export default function SettingsView({ onDataChange, enabledModules, setEnabledM
   }
 
   function toggleModule(id) {
-    const mod = ALL_MODULES.find(m => m.id === id)
-    if (mod?.alwaysOn) return
     const next = localModules.includes(id)
       ? localModules.filter(m => m !== id)
       : [...localModules, id]
@@ -153,14 +151,14 @@ export default function SettingsView({ onDataChange, enabledModules, setEnabledM
       {/* Module selector */}
       <div className="card">
         <h3 className="card-title">Aktiva moduler</h3>
-        <p className="card-desc">Välj vilka flikar som ska visas i navigeringen. Grå = alltid på.</p>
+        <p className="card-desc">Välj vilka flikar som ska visas i navigeringen.</p>
         <div className="module-list">
           {ALL_MODULES.map(mod => {
-            const isEnabled = mod.alwaysOn || localModules.includes(mod.id)
+            const isEnabled = localModules.includes(mod.id)
             return (
               <div
                 key={mod.id}
-                className={`module-item ${mod.alwaysOn ? 'module-item-locked' : ''}`}
+                className="module-item"
                 onClick={() => toggleModule(mod.id)}
               >
                 <span className="module-icon">{mod.icon}</span>
@@ -168,8 +166,8 @@ export default function SettingsView({ onDataChange, enabledModules, setEnabledM
                   <span className="module-name">{mod.label}</span>
                   <span className="module-desc">{mod.desc}</span>
                 </div>
-                <div className={`module-toggle ${isEnabled ? 'module-toggle-on' : ''} ${mod.alwaysOn ? 'module-toggle-locked' : ''}`}>
-                  {mod.alwaysOn ? '🔒' : isEnabled ? '✓' : ''}
+                <div className={`module-toggle ${isEnabled ? 'module-toggle-on' : ''}`}>
+                  {isEnabled ? '✓' : ''}
                 </div>
               </div>
             )

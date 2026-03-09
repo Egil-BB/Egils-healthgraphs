@@ -20,7 +20,8 @@ const COLUMN_MAPPINGS = [
   { field: 'triglycerides', keywords: ['triglycerid'], exclude: [] },
   { field: 'glucose', keywords: ['glukos'], exclude: [] },
   { field: 'hba1c', keywords: ['hba1c'], exclude: [] },
-  { field: 'hb', keywords: ['hemoglobin'], exclude: ['hba1c', 'cohb', 'methb', 'oxy'] },
+  { field: 'methb', keywords: ['methemoglobin', 'methb', 'met-hemoglobin'], exclude: [] },
+  { field: 'hb', keywords: ['hemoglobin'], exclude: ['hba1c', 'cohb', 'methb', 'methemoglobin', 'oxy'] },
   { field: 'ferritin', keywords: ['ferritin'], exclude: [] },
   { field: 'wbc', keywords: ['leukocyt', 'lpk'], exclude: [] },
   { field: 'creatinine', keywords: ['kreatinin'], exclude: [] },
@@ -29,6 +30,7 @@ const COLUMN_MAPPINGS = [
   { field: 'alat', keywords: ['alat'], exclude: [] },
   { field: 'tsh', keywords: ['tsh'], exclude: [] },
   { field: 'crp', keywords: ['crp'], exclude: ['hscrp', 'pna'] },
+  { field: 'uricAcid', keywords: ['urat', 'urinsyra', 'ursyra'], exclude: [] },
 ]
 
 function matchColumn(header) {

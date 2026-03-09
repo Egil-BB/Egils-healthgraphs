@@ -132,6 +132,7 @@ export const LAB_TYPES = [
   { value: 'glucose', label: 'P-Glukos (faste)', unit: 'mmol/L', scoreRelevant: false, refMax: 6.1 },
   { value: 'hba1c', label: 'HbA1c', unit: 'mmol/mol', scoreRelevant: false, refMax: 48 },
   { value: 'hb', label: 'Hemoglobin (Hb)', unit: 'g/L', scoreRelevant: false },
+  { value: 'methb', label: 'Methemoglobin (MetHb)', unit: '%', scoreRelevant: false, refMax: 1.5 },
   { value: 'ferritin', label: 'Ferritin', unit: 'µg/L', scoreRelevant: false },
   { value: 'potassium', label: 'Kalium', unit: 'mmol/L', scoreRelevant: false, refMin: 3.5, refMax: 5.0 },
   { value: 'creatinine', label: 'Kreatinin', unit: 'µmol/L', scoreRelevant: false },
@@ -141,4 +142,5 @@ export const LAB_TYPES = [
   { value: 'alat', label: 'ALAT', unit: 'µkat/L', scoreRelevant: false },
   { value: 'tsh', label: 'TSH', unit: 'mIE/L', scoreRelevant: false, refMin: 0.4, refMax: 4.0 },
   { value: 'crp', label: 'CRP', unit: 'mg/L', scoreRelevant: false, refMax: 5.0 },
+  { value: 'uricAcid', label: 'Urat (urinsyra)', unit: 'µmol/L', scoreRelevant: false, refMax: 420 },
 ]
