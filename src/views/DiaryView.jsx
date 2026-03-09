@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { addGutEntry, getAllGutEntries, deleteGutEntry } from '../db/db'
+import { addGutEntry, getAllGutEntries, deleteGutEntry, getProfile, setProfile } from '../db/db'
 import { formatDateSv } from '../utils/bp'
 
 const BRISTOL_TYPES = [
@@ -12,7 +12,8 @@ const BRISTOL_TYPES = [
   { type: 7, desc: 'Helt flytande, ingen fast form', color: '#dc2626' },
 ]
 
-const LAXATIVES = ['Movicol', 'Cilaxoral', 'Resolor', 'Imodium', 'Vi-Siblin', 'Inolaxol']
+const DEFAULT_LAXATIVES = ['Movicol', 'Cilaxoral', 'Resolor', 'Imodium', 'Vi-Siblin', 'Inolaxol']
+const LAX_MAX_DOSE = 10
 const GRADE_LABELS = ['Ingen', 'Mild', 'Måttlig', 'Svår']
 
 function GradeSelector({ label, value, onChange }) {
@@ -47,11 +48,41 @@ export default function DiaryView({ onDataChange }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [showInfo, setShowInfo] = useState(false)
+  const [laxMeds, setLaxMeds] = useState(DEFAULT_LAXATIVES)
+  const [editingLax, setEditingLax] = useState(false)
+  const [newLaxName, setNewLaxName] = useState('')
 
   const load = useCallback(async () => {
     const all = await getAllGutEntries()
     setEntries(all.sort((a, b) => b.date.localeCompare(a.date)))
   }, [])
+
+  useEffect(() => {
+    getProfile('laxMeds').then(saved => {
+      if (saved && Array.isArray(saved) && saved.length > 0) setLaxMeds(saved)
+    })
+  }, [])
+
+  async function saveLaxMeds(next) {
+    setLaxMeds(next)
+    await setProfile('laxMeds', next)
+  }
+
+  function addLaxMed() {
+    const name = newLaxName.trim()
+    if (!name || laxMeds.includes(name)) return
+    saveLaxMeds([...laxMeds, name])
+    setNewLaxName('')
+  }
+
+  function removeLaxMed(name) {
+    saveLaxMeds(laxMeds.filter(m => m !== name))
+    setForm(f => {
+      const laxatives = { ...f.laxatives }
+      delete laxatives[name]
+      return { ...f, laxatives }
+    })
+  }
 
   useEffect(() => { load() }, [load])
 
@@ -71,7 +102,7 @@ export default function DiaryView({ onDataChange }) {
   function toggleLaxative(name) {
     setForm(f => {
       const cur = f.laxatives[name] || 0
-      const next = cur + 1 > 5 ? 0 : cur + 1
+      const next = cur + 1 > LAX_MAX_DOSE ? 0 : cur + 1
       const laxatives = { ...f.laxatives }
       if (next === 0) delete laxatives[name]
       else laxatives[name] = next
@@ -206,9 +237,38 @@ export default function DiaryView({ onDataChange }) {
 
             {/* Laxatives */}
             <div className="form-group">
-              <label>Laxativ/tarmregulerare – klicka för antal doser</label>
+              <div className="lax-manage-row">
+                <label>Laxativ/tarmregulerare – klicka för antal doser</label>
+                <button type="button" className="lax-manage-btn" onClick={() => setEditingLax(v => !v)}>
+                  {editingLax ? 'Klar' : 'Ändra lista'}
+                </button>
+              </div>
+              {editingLax && (
+                <div className="lax-edit-form">
+                  <p>Dina läkemedel:</p>
+                  <div className="lax-current">
+                    {laxMeds.map(name => (
+                      <span key={name} className="lax-tag">
+                        {name}
+                        <button type="button" className="lax-tag-remove" onClick={() => removeLaxMed(name)}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="lax-add-row">
+                    <input
+                      type="text"
+                      value={newLaxName}
+                      onChange={e => setNewLaxName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLaxMed())}
+                      placeholder="Lägg till läkemedel..."
+                      className="form-input lax-add-input"
+                    />
+                    <button type="button" className="btn-secondary" onClick={addLaxMed}>Lägg till</button>
+                  </div>
+                </div>
+              )}
               <div className="lax-grid">
-                {LAXATIVES.map(name => {
+                {laxMeds.map(name => {
                   const count = form.laxatives[name] || 0
                   return (
                     <button
@@ -223,7 +283,7 @@ export default function DiaryView({ onDataChange }) {
                   )
                 })}
               </div>
-              <p className="form-hint">Klicka för att lägga till dos. Klicka igen för +1 dos (max 5). Klicka en sjätte gång för att ta bort.</p>
+              <p className="form-hint">Klicka för att lägga till dos. Klicka igen för +1 dos (max {LAX_MAX_DOSE}). Klicka till 0 för att ta bort.</p>
             </div>
 
             <div className="form-group">

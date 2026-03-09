@@ -1,4 +1,4 @@
-const TABS = [
+const DEFAULT_TABS = [
   { id: 'register', label: 'Registrera', icon: '💓' },
   { id: 'graph', label: 'Graf', icon: '📈' },
   { id: 'meds', label: 'Mediciner', icon: '💊' },
@@ -7,10 +7,11 @@ const TABS = [
   { id: 'info', label: 'Info', icon: '📖' }
 ]
 
-export default function NavBar({ active, onNav, notifications = {} }) {
+export default function NavBar({ active, onNav, notifications = {}, tabs }) {
+  const visibleTabs = tabs || DEFAULT_TABS
   return (
     <nav className="navbar">
-      {TABS.map(tab => (
+      {visibleTabs.map(tab => (
         <button
           key={tab.id}
           className={`nav-item ${active === tab.id ? 'nav-item-active' : ''}`}
@@ -29,4 +30,4 @@ export default function NavBar({ active, onNav, notifications = {} }) {
   )
 }
 
-export { TABS }
+export { DEFAULT_TABS as TABS }
