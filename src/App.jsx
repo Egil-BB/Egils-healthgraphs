@@ -12,6 +12,7 @@ import KnowledgeView from './views/KnowledgeView'
 import SettingsView from './views/SettingsView'
 import DiaryView from './views/DiaryView'
 import MictView from './views/MictView'
+import PainView from './views/PainView'
 import { getAllLifestyle, getProfile } from './db/db'
 import { DEFAULT_ENABLED_IDS, buildEnabledTabs } from './utils/modules'
 
@@ -128,6 +129,10 @@ export default function App() {
 
         {tab === 'micturition' && (
           <MictView onDataChange={handleDataChange} />
+        )}
+
+        {tab === 'pain' && (
+          <PainView onDataChange={handleDataChange} />
         )}
 
         {tab === 'info' && (

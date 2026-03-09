@@ -2144,3 +2144,110 @@ button { touch-action: manipulation; }
   .mict-table { font-size: 11px; }
   body { background: white; }
 }
+
+/* ─── Pain diary ─────────────────────────────────────────────────────────── */
+.pain-add-btn { width: 100%; margin-top: 4px; }
+.pain-empty { text-align: center; color: var(--text-muted); font-size: 14px; padding: 16px 0; }
+
+/* Warnings */
+.pain-warning { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 12px; }
+.pain-warning-warn { background: #fffbeb; border: 1.5px solid #fcd34d; }
+.pain-warning-danger { background: #fee2e2; border: 1.5px solid #fca5a5; }
+.pain-warning-msg { font-size: 13px; color: var(--text); flex: 1; margin: 0; }
+.pain-warning-dismiss { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); padding: 0; }
+
+/* Wizard overlay */
+.pain-wizard-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200;
+  display: flex; align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto;
+}
+.pain-wizard {
+  background: var(--surface); border-radius: 16px; padding: 20px;
+  width: 100%; max-width: 480px; position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18); margin-top: 20px;
+}
+.pain-wizard-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);
+}
+.pain-wizard-progress { display: flex; gap: 8px; margin-bottom: 16px; }
+.pain-prog-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; transition: background 0.2s; }
+.pain-prog-dot.active { background: var(--primary); }
+.pain-step-title { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 16px 0; }
+.pain-wizard-step { padding-bottom: 8px; }
+.pain-wizard-nav { display: flex; gap: 8px; justify-content: space-between; margin-top: 16px; }
+.pain-wizard-nav .btn-primary, .pain-wizard-nav .btn-secondary { flex: 1; }
+.pain-skip { display: block; text-align: center; background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin-top: 8px; text-decoration: underline; }
+
+/* Sliders */
+.pain-slider-field { margin-bottom: 18px; }
+.pain-slider-label { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.pain-slider-value { font-size: 32px; font-weight: 900; text-align: center; line-height: 1.1; margin: 4px 0; transition: color 0.2s; }
+.pain-slider { width: 100%; height: 6px; cursor: pointer; accent-color: var(--slider-color, var(--primary)); }
+.pain-slider-anchors { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* Body map */
+.pain-bodymap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.pain-body-svg { width: 140px; height: auto; cursor: crosshair; }
+.pain-bodymap-selected { font-size: 13px; color: var(--text); text-align: center; min-height: 20px; }
+
+/* Chips */
+.pain-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.pain-chip {
+  padding: 6px 12px; border-radius: 20px; border: 1.5px solid #d1d5db;
+  background: #f9fafb; font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.pain-chip-active { background: #fee2e2; border-color: #ef4444; color: #b91c1c; font-weight: 600; }
+.pain-section-label { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+
+/* Meds */
+.pain-meds { display: flex; flex-direction: column; gap: 8px; }
+.pain-med-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 8px; background: #f9fafb; }
+.pain-med-opioid { border: 1px solid #fcd34d; background: #fffbeb; }
+.pain-med-label { font-size: 14px; color: var(--text); flex: 1; }
+.pain-med-controls { display: flex; align-items: center; gap: 8px; }
+.pain-med-btn { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #d1d5db; background: white; font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1; }
+.pain-med-count { font-size: 16px; font-weight: 700; min-width: 22px; text-align: center; }
+.pain-med-other { border: 1px solid #d1d5db; border-radius: 8px; padding: 4px 8px; font-size: 13px; flex: 1; background: white; }
+.pain-notes { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px; font-size: 13px; min-height: 70px; margin-top: 12px; resize: vertical; background: white; font-family: inherit; }
+
+/* Chart tabs + range */
+.pain-chart-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.pain-tab-btn { flex: 1; padding: 7px; border-radius: 10px; border: 1.5px solid #d1d5db; background: white; font-size: 13px; cursor: pointer; }
+.pain-tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); font-weight: 700; }
+.pain-range-btns { display: flex; gap: 5px; margin-bottom: 10px; }
+.pain-range-btn { flex: 1; padding: 5px; border-radius: 8px; border: 1.5px solid #d1d5db; background: white; font-size: 12px; cursor: pointer; }
+.pain-range-btn.active { background: var(--primary); color: white; border-color: var(--primary); font-weight: 700; }
+.pain-chart-wrap { position: relative; }
+.pain-med-dates { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+/* Heatmap */
+.pain-heatmap-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.pain-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
+.pain-legend-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.pain-month { margin-bottom: 16px; }
+.pain-month-label { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; text-transform: capitalize; }
+.pain-month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.pain-dow-label { font-size: 10px; color: var(--text-muted); text-align: center; padding: 2px 0; }
+.pain-day { aspect-ratio: 1; border-radius: 3px; position: relative; }
+.pain-day-empty { background: transparent !important; }
+.pain-day-dot { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #1e40af; }
+
+/* Popup */
+.pain-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 250; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.pain-popup { background: var(--surface); border-radius: 14px; padding: 16px; width: 100%; max-width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position: relative; }
+.pain-popup-close { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); }
+.pain-popup-date { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.pain-popup-entry { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+.pain-popup-entry:last-child { border-bottom: none; }
+.pain-popup-time { color: var(--text-muted); }
+
+/* History */
+.pain-history-item { border: 1px solid #f0f0f0; border-radius: 10px; padding: 10px; margin-bottom: 8px; background: #fafafa; }
+.pain-history-item:last-child { margin-bottom: 0; }
+.pain-history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.pain-history-date { font-size: 13px; color: var(--text-muted); }
+.pain-history-vals { display: flex; gap: 14px; margin-bottom: 4px; }
+.pain-hist-nrs { font-size: 17px; font-weight: 800; }
+.pain-hist-peg { font-size: 15px; font-weight: 600; }
+.pain-history-locs, .pain-history-quality, .pain-history-meds, .pain-history-notes { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
