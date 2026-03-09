@@ -53,6 +53,14 @@ export const ALL_MODULES = [
     desc: 'Miktionslista för inkontinensutredning och remisser',
   },
   {
+    id: 'pain',
+    label: 'Smärta',
+    icon: '🩻',
+    alwaysOn: false,
+    defaultOn: false,
+    desc: 'Smärtdagbok med NRS/PEG-skala, lokalisering och tidslinjegraf',
+  },
+  {
     id: 'info',
     label: 'Info',
     icon: '📖',

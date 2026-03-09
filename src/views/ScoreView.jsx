@@ -43,7 +43,7 @@ function detectClinicalFlags({ labs, avgSys, avgDia, waist, sex, bmi }) {
 
   // ── Diabetes / Prediabetes ──────────────────────────────────────────────
   const hasDiabetes = (glucose !== null && glucose >= 7.0) || (hba1c !== null && hba1c >= 48)
-  const hasPrediabetes = !hasDiabetes && ((glucose !== null && glucose >= 5.6) || (hba1c !== null && hba1c >= 42))
+  const hasPrediabetes = !hasDiabetes && ((glucose !== null && glucose >= 6.0) || (hba1c !== null && hba1c >= 42))
 
   if (hasDiabetes) {
     flags.push({
@@ -65,7 +65,7 @@ function detectClinicalFlags({ labs, avgSys, avgDia, waist, sex, bmi }) {
       icon: '🩸',
       title: 'Prediabetes/förhöjt socker',
       details: [
-        glucose !== null && glucose >= 5.6 ? `Fasteglukos ${glucose} mmol/L (norm <5,6)` : null,
+        glucose !== null && glucose >= 6.0 ? `Fasteglukos ${glucose} mmol/L (norm <6,0)` : null,
         hba1c !== null && hba1c >= 42 ? `HbA1c ${hba1c} mmol/mol (norm <42)` : null
       ].filter(Boolean),
       advice: 'Livsstilsförändringar kan förebygga diabetes typ 2. Fokusera på regelbunden motion, kostomläggning (minska snabba kolhydrater) och viktnedgång om övervikt föreligger. Diskutera med din läkare.',
@@ -103,7 +103,7 @@ function detectClinicalFlags({ labs, avgSys, avgDia, waist, sex, bmi }) {
   const hdlLimit = sex === 'female' ? 1.3 : 1.0
   if (hdl !== null && hdl < hdlLimit) { metSyndCriteria++; metSyndDetails.push(`HDL ${hdl} mmol/L (<${hdlLimit})`) }
   if (avgSys && avgDia && (avgSys >= 130 || avgDia >= 85)) { metSyndCriteria++; metSyndDetails.push(`BT ${avgSys}/${avgDia} mmHg (≥130/85)`) }
-  if (glucose !== null && glucose >= 5.6) { metSyndCriteria++ } // already counted above if prediabetes shown
+  if (glucose !== null && glucose >= 6.0) { metSyndCriteria++ } // already counted above if prediabetes shown
 
   if (metSyndCriteria >= 3 && !hasDiabetes) {
     flags.push({
@@ -455,30 +455,34 @@ export default function ScoreView({ refreshKey }) {
             </div>
           </div>
 
-          {autoScenarios && (
+          {autoScenarios && autoScenarios.improvements.length > 0 && (
             <div className="card">
-              <h3 className="card-title">Scenarion – om riskfaktorer sänks</h3>
+              <h3 className="card-title">Förväntad riskminskning</h3>
               <p className="card-desc" style={{ marginBottom: 10, fontSize: 13 }}>
-                Visar hur 10-årsrisken förändras om blodtrycket och/eller kolesterolet sänks.
+                Visar hur mycket din 10-årsrisk kan sänkas om du når blodtrycksmålet (&lt;130 mmHg) och/eller förbättrar blodfetterna.
               </p>
+              {autoScenarios.current.sbp < 130 && (
+                <p className="card-desc" style={{ fontSize: 12, marginBottom: 8, color: '#16a34a' }}>
+                  ✓ Blodtryck redan under mål (&lt;130 mmHg).
+                </p>
+              )}
               <div className="scenarios">
-                {autoScenarios.map((s, i) => (
-                  <div
-                    key={i}
-                    className={`scenario-item ${i === 0 ? 'scenario-current' : ''} ${s.combined ? 'scenario-combined' : ''}`}
-                    style={{ borderColor: s.category.color }}
-                  >
-                    <div className="scenario-label">{s.label}</div>
-                    <div className="scenario-sbp">{s.sbp} mmHg</div>
-                    <div className="scenario-risk" style={{ color: s.category.color }}>{s.riskPercent}%</div>
-                    <div className="scenario-cat" style={{ color: s.category.color }}>{s.category.label}</div>
-                    {i > 0 && (
-                      <div className="scenario-diff" style={{ color: '#16a34a' }}>
-                        −{(parseFloat(autoScenarios[0].riskPercent) - parseFloat(s.riskPercent)).toFixed(1)}%
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {autoScenarios.improvements.map((s, i) => {
+                  const reduction = (parseFloat(autoScenarios.current.riskPercent) - parseFloat(s.riskPercent)).toFixed(1)
+                  return (
+                    <div
+                      key={i}
+                      className={`scenario-item ${s.combined ? 'scenario-combined' : ''}`}
+                      style={{ borderColor: s.category.color }}
+                    >
+                      <div className="scenario-label">{s.label}</div>
+                      <div className="scenario-sbp">{s.sbp} mmHg · non-HDL {s.nonHdl}</div>
+                      <div className="scenario-risk" style={{ color: s.category.color }}>{s.riskPercent}%</div>
+                      <div className="scenario-cat" style={{ color: s.category.color }}>{s.category.label}</div>
+                      <div className="scenario-diff" style={{ color: '#16a34a' }}>−{reduction}% risk</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

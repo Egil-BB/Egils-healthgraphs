@@ -1,7 +1,7 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'egils-halsografer'
-const DB_VERSION = 4
+const DB_VERSION = 5
 
 let dbPromise = null
 
@@ -44,6 +44,11 @@ function getDB() {
         if (!db.objectStoreNames.contains('diary_micturition')) {
           const dm = db.createObjectStore('diary_micturition', { keyPath: 'id', autoIncrement: true })
           dm.createIndex('date', 'date')
+        }
+        // Version 5 stores
+        if (!db.objectStoreNames.contains('diary_pain')) {
+          const dp = db.createObjectStore('diary_pain', { keyPath: 'id' })
+          dp.createIndex('date', 'date')
         }
       }
     })
@@ -186,6 +191,23 @@ export async function deleteMicturitionEntry(id) {
   return db.delete('diary_micturition', id)
 }
 
+// ── Pain diary ────────────────────────────────────────────────────────────────
+
+export async function addPainEntry(data) {
+  const db = await getDB()
+  return db.add('diary_pain', { ...data })
+}
+
+export async function getAllPainEntries() {
+  const db = await getDB()
+  return db.getAllFromIndex('diary_pain', 'date')
+}
+
+export async function deletePainEntry(id) {
+  const db = await getDB()
+  return db.delete('diary_pain', id)
+}
+
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 export async function getProfile(key) {
@@ -216,6 +238,7 @@ export async function exportAllData() {
     weights: await db.getAll('weights'),
     diary_gut: await db.getAll('diary_gut'),
     diary_micturition: await db.getAll('diary_micturition'),
+    diary_pain: await db.getAll('diary_pain'),
     profile: await db.getAll('profile'),
     exportedAt: new Date().toISOString()
   }
@@ -223,7 +246,7 @@ export async function exportAllData() {
 
 export async function importData(data) {
   const db = await getDB()
-  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'diary_gut', 'diary_micturition', 'profile']
+  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'diary_gut', 'diary_micturition', 'diary_pain', 'profile']
   const tx = db.transaction(stores, 'readwrite')
   for (const m of (data.measurements || [])) {
     try { await tx.objectStore('measurements').put(m) } catch {}
@@ -246,6 +269,9 @@ export async function importData(data) {
   for (const m of (data.diary_micturition || [])) {
     try { await tx.objectStore('diary_micturition').put(m) } catch {}
   }
+  for (const p of (data.diary_pain || [])) {
+    try { await tx.objectStore('diary_pain').put(p) } catch {}
+  }
   for (const p of (data.profile || [])) {
     try { await tx.objectStore('profile').put(p) } catch {}
   }
@@ -254,7 +280,7 @@ export async function importData(data) {
 
 export async function clearAllData() {
   const db = await getDB()
-  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'diary_gut', 'diary_micturition', 'profile']
+  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'diary_gut', 'diary_micturition', 'diary_pain', 'profile']
   const tx = db.transaction(stores, 'readwrite')
   await Promise.all(stores.map(s => tx.objectStore(s).clear()))
   await tx.done

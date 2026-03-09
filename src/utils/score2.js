@@ -108,22 +108,32 @@ function getRiskCategory(riskPct, age) {
 }
 
 /**
- * Visa hur risken förändras vid lägre blodtryck och/eller kolesterol
+ * Beräknar förväntad riskminskning vid BT-mål (<130 mmHg) och/eller optimerade blodfetter
+ * Returnerar { current, improvements[] }
  */
 export function calculateRiskScenarios(params) {
   const nonHdlNow = params.nonHdlDirect ?? (params.hdl != null ? params.totalCholesterol - params.hdl : (params.totalCholesterol ?? 5) - 1.3)
-  const scenarios = [
-    { label: 'Nuvarande', sbpOffset: 0, nonHdlOffset: 0 },
-    { label: '−10 mmHg BT', sbpOffset: -10, nonHdlOffset: 0 },
-    { label: '−20 mmHg BT', sbpOffset: -20, nonHdlOffset: 0 },
-    { label: '−1,0 non-HDL', sbpOffset: 0, nonHdlOffset: -1.0 },
-    { label: '−10 mmHg + −1,0', sbpOffset: -10, nonHdlOffset: -1.0, combined: true }
-  ]
-  return scenarios.map(s => {
+  const current = { sbp: params.sbp, nonHdl: Math.round(nonHdlNow * 10) / 10, ...calculateScore2({ ...params, nonHdlDirect: nonHdlNow }) }
+
+  const atBtTarget = params.sbp >= 130
+  const btOffset = atBtTarget ? 129 - params.sbp : 0 // drop exactly to 129
+
+  const scenarioDefs = []
+  if (atBtTarget) {
+    scenarioDefs.push({ label: 'BT-mål (<130 mmHg)', sbpOffset: btOffset, nonHdlOffset: 0 })
+  }
+  scenarioDefs.push({ label: 'Optimerade blodfetter (−1,0 non-HDL)', sbpOffset: 0, nonHdlOffset: -1.0 })
+  if (atBtTarget) {
+    scenarioDefs.push({ label: 'Kombinerat', sbpOffset: btOffset, nonHdlOffset: -1.0, combined: true })
+  }
+
+  const improvements = scenarioDefs.map(s => {
     const newNonHdl = Math.max(0.5, nonHdlNow + s.nonHdlOffset)
     const adjusted = { ...params, sbp: params.sbp + s.sbpOffset, nonHdlDirect: newNonHdl }
-    return { ...s, sbp: adjusted.sbp, nonHdl: newNonHdl, ...calculateScore2(adjusted) }
+    return { ...s, sbp: adjusted.sbp, nonHdl: Math.round(newNonHdl * 10) / 10, ...calculateScore2(adjusted) }
   })
+
+  return { current, improvements }
 }
 
 export const LAB_TYPES = [

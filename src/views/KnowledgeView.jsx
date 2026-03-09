@@ -210,8 +210,8 @@ Morgonmätning (före medicin, efter 5 min vila) ger bäst bild. Registrera i ap
     content: `**Typ 2-diabetes** uppstår när kroppen inte kan använda insulin effektivt (insulinresistens).
 
 **Gränsvärden:**
-- Normalt fasteglukos: < 5,6 mmol/L och HbA1c < 42 mmol/mol
-- Prediabetes: fasteglukos 5,6–6,9 eller HbA1c 42–47
+- Normalt fasteglukos: < 6,0 mmol/L och HbA1c < 42 mmol/mol
+- Prediabetes: fasteglukos 6,0–6,9 eller HbA1c 42–47
 - Diabetes: fasteglukos ≥ 7,0 eller HbA1c ≥ 48
 
 **Symtom:**
@@ -231,15 +231,18 @@ Njurskada, neuropati, retinopati, ökad hjärt-kärlrisk. Högt blodtryck + diab
     icon: '🫀',
     title: 'Kolesterol och hjärtrisk',
     summary: 'LDL och non-HDL driver åderförkalkning. HDL skyddar.',
-    content: `**Viktiga värden:**
-- **LDL-kolesterol:** < 2,5 mmol/L (< 1,8 vid hög kardiovaskulär risk)
-- **Non-HDL:** < 3,4 mmol/L (alla "dåliga" fetter)
+    content: `**Principen: lägre är bättre**
+För LDL och non-HDL gäller generellt att lägre värden ger lägre risk för hjärt-kärlsjukdom — det finns inget "för lågt" för de flesta. Ju högre din totala risk, desto mer att vinna på att sänka fetterna.
+
+**Vanliga referensvärden (ungefärliga riktvärden):**
+- **LDL-kolesterol:** < 2,5 mmol/L som utgångspunkt
+- **Non-HDL:** < 3,4 mmol/L (fångar alla "dåliga" fetter, används i SCORE2)
 - **HDL:** > 1,0 (män) / > 1,3 (kvinnor) mmol/L – skyddar
 - **Triglycerider:** < 1,7 mmol/L
 - **Totalkolesterol:** < 5,0 mmol/L
 
-**Non-HDL är det viktigaste:**
-Non-HDL (totalkolesterol minus HDL) fångar alla aterogena lipoproteiner och används i SCORE2.
+**Behandlingsmål beror på din totala risk**
+Vid hög eller mycket hög kardiovaskulär risk (t.ex. genomgången hjärtinfarkt, diabetes + riskfaktorer) rekommenderar ESC lägre LDL-mål: < 1,8 eller till och med < 1,4 mmol/L. SCORE2 är ett bra hjälpmedel för att uppskatta din risk, men det ersätter inte en samlad klinisk bedömning av din läkare – som också väger in ärftlighet, övriga sjukdomar och symtom.
 
 **Vad höjer LDL?**
 Mättat fett (smör, chark, kokosfett), transfetter, ärftlighet.
