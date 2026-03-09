@@ -1,10 +1,12 @@
 // Blood pressure utility functions
 
 export const BP_CATEGORIES = [
-  { label: 'Optimalt',     maxSys: 130, maxDia: 80,  color: '#16a34a', bg: '#dcfce7' },
-  { label: 'Bra',          maxSys: 135, maxDia: 85,  color: '#65a30d', bg: '#ecfccb' },
-  { label: 'Acceptabelt',  maxSys: 140, maxDia: 90,  color: '#ca8a04', bg: '#fef9c3' },
-  { label: 'Förhöjt',      maxSys: Infinity, maxDia: Infinity, color: '#dc2626', bg: '#fee2e2' }
+  { label: 'Optimalt',         maxSys: 130, maxDia: 80,       color: '#16a34a', bg: '#dcfce7', crisis: false },
+  { label: 'Bra',              maxSys: 135, maxDia: 85,       color: '#65a30d', bg: '#ecfccb', crisis: false },
+  { label: 'Acceptabelt',      maxSys: 140, maxDia: 90,       color: '#ca8a04', bg: '#fef9c3', crisis: false },
+  { label: 'Förhöjt',         maxSys: 160, maxDia: 100,      color: '#ea580c', bg: '#ffedd5', crisis: false },
+  { label: 'Högt',             maxSys: 180, maxDia: 110,      color: '#dc2626', bg: '#fee2e2', crisis: false },
+  { label: 'Hypertensiv kris', maxSys: Infinity, maxDia: Infinity, color: '#7f1d1d', bg: '#fca5a5', crisis: true }
 ]
 
 export function classifyBP(sys, dia) {
@@ -24,6 +26,10 @@ export function getBPColor(sys, dia) {
 
 export function getBPBg(sys, dia) {
   return classifyBP(sys, dia).bg
+}
+
+export function isCrisisBP(sys, dia) {
+  return classifyBP(sys, dia).crisis === true
 }
 
 // Time of day label (Swedish)

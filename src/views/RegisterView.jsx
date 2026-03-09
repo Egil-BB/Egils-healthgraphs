@@ -1,40 +1,60 @@
 import { useState, useEffect, useCallback } from 'react'
 import { addMeasurement, getAllMeasurements, deleteMeasurement } from '../db/db'
 import {
-  classifyBP, getBPColor, getBPBg,
+  classifyBP, getBPColor, getBPBg, isCrisisBP,
   getTrendFeedback, getTodaySummary,
-  formatTimeSv, TIME_OF_DAY_LABELS
+  formatTimeSv, TIME_OF_DAY_LABELS, daysAgo
 } from '../utils/bp'
 
-export default function RegisterView({ onDataChange }) {
-  const [sys, setSys] = useState('')
-  const [dia, setDia] = useState('')
+function get14DayAvg(measurements) {
+  const from = daysAgo(14)
+  const recent = measurements.filter(m => m.date >= from)
+  if (recent.length < 2) return null
+  const avgSys = Math.round(recent.reduce((s, m) => s + m.sys, 0) / recent.length)
+  const avgDia = Math.round(recent.reduce((s, m) => s + m.dia, 0) / recent.length)
+  return { sys: avgSys, dia: avgDia }
+}
+
+export default function RegisterView({ onDataChange, refreshKey }) {
+  const [measurements, setMeasurements] = useState([])
+  const [defaultAvg, setDefaultAvg] = useState(null)
+  const [sys, setSys] = useState(120)
+  const [dia, setDia] = useState(80)
   const [pulse, setPulse] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [measurements, setMeasurements] = useState([])
   const [showNote, setShowNote] = useState(false)
 
   const load = useCallback(async () => {
     const all = await getAllMeasurements()
-    setMeasurements(all.sort((a, b) => b.timestamp.localeCompare(a.timestamp)))
+    const sorted = all.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    setMeasurements(sorted)
+    const avg = get14DayAvg(sorted)
+    if (avg) {
+      setDefaultAvg(avg)
+      setSys(avg.sys)
+      setDia(avg.dia)
+    } else {
+      setDefaultAvg(null)
+      setSys(120)
+      setDia(80)
+    }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, refreshKey])
 
   async function handleSave(e) {
     e.preventDefault()
-    const s = parseInt(sys), d = parseInt(dia)
-    if (!s || !d || s < 50 || s > 300 || d < 30 || d > 200) return
+    if (!sys || !dia || sys < 50 || sys > 300 || dia < 30 || dia > 200) return
     setSaving(true)
     await addMeasurement({
-      sys: s,
-      dia: d,
+      sys: Number(sys),
+      dia: Number(dia),
       pulse: pulse ? parseInt(pulse) : null,
       note: note.trim() || null
     })
-    setSys(''); setDia(''); setPulse(''); setNote(''); setShowNote(false)
+    setPulse(''); setNote(''); setShowNote(false)
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     await load()
@@ -51,50 +71,85 @@ export default function RegisterView({ onDataChange }) {
   const allMs = [...measurements].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
   const trend = getTrendFeedback(allMs)
   const today = getTodaySummary(allMs)
-  const lastBP = allMs.length > 0 ? allMs[allMs.length - 1] : null
-
   const todayMs = measurements.filter(m => m.date === new Date().toISOString().slice(0, 10))
+
+  const category = classifyBP(Number(sys), Number(dia))
+  const bpColor = getBPColor(Number(sys), Number(dia))
+  const bpBg = getBPBg(Number(sys), Number(dia))
+  const crisis = isCrisisBP(Number(sys), Number(dia))
+
+  const showMeasureTip = trend && trend.recentAvgSys < 130 && trend.recentAvgDia < 80
+
+  const sysFill = `${((sys - 70) / 150) * 100}%`
+  const diaFill = `${((dia - 40) / 100) * 100}%`
 
   return (
     <div className="view-content">
-      {/* Quick input form */}
       <div className="card register-card">
         <h2 className="card-title">Registrera blodtryck</h2>
         <form onSubmit={handleSave} autoComplete="off">
-          <div className="bp-inputs">
-            <div className="bp-input-group">
-              <label>SYS</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={sys}
-                onChange={e => setSys(e.target.value)}
-                placeholder="120"
-                min="50" max="300"
-                required
-                className="bp-input"
-                autoFocus
-              />
-              <span className="bp-unit">mmHg</span>
+          <div className="slider-section">
+            {/* SYS slider */}
+            <div className="slider-group">
+              <div className="slider-label-row">
+                <label className="slider-lbl">Systoliskt (övre)</label>
+                <span className="slider-val" style={{ color: bpColor }}>{sys} <span className="slider-unit-sm">mmHg</span></span>
+              </div>
+              <div className="slider-track-wrap">
+                <div className="slider-track-fill" style={{ width: sysFill, background: bpColor }} />
+                <input
+                  type="range" min="70" max="220" step="1"
+                  value={sys}
+                  onChange={e => setSys(Number(e.target.value))}
+                  className="bp-slider"
+                />
+              </div>
+              <div className="slider-ticks"><span>70</span><span>100</span><span>130</span><span>160</span><span>190</span><span>220</span></div>
             </div>
-            <div className="bp-divider">/</div>
-            <div className="bp-input-group">
-              <label>DIA</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={dia}
-                onChange={e => setDia(e.target.value)}
-                placeholder="80"
-                min="30" max="200"
-                required
-                className="bp-input"
-              />
-              <span className="bp-unit">mmHg</span>
+
+            {/* DIA slider */}
+            <div className="slider-group">
+              <div className="slider-label-row">
+                <label className="slider-lbl">Diastoliskt (undre)</label>
+                <span className="slider-val" style={{ color: bpColor }}>{dia} <span className="slider-unit-sm">mmHg</span></span>
+              </div>
+              <div className="slider-track-wrap">
+                <div className="slider-track-fill" style={{ width: diaFill, background: bpColor }} />
+                <input
+                  type="range" min="40" max="140" step="1"
+                  value={dia}
+                  onChange={e => setDia(Number(e.target.value))}
+                  className="bp-slider"
+                />
+              </div>
+              <div className="slider-ticks"><span>40</span><span>60</span><span>80</span><span>100</span><span>120</span><span>140</span></div>
             </div>
-            <div className="bp-divider pulse-divider">♥</div>
-            <div className="bp-input-group">
-              <label>Puls</label>
+
+            {defaultAvg && (
+              <p className="slider-hint">Startläge: ditt 14-dagarssnitt {defaultAvg.sys}/{defaultAvg.dia}. Dra till uppmätt värde.</p>
+            )}
+          </div>
+
+          {/* BP classification */}
+          <div className="bp-preview" style={{ background: bpBg, borderColor: bpColor }}>
+            <span className="bp-preview-value" style={{ color: bpColor }}>{sys}/{dia} mmHg</span>
+            <span className="bp-preview-label" style={{ color: bpColor }}>{category.label}</span>
+          </div>
+
+          {/* Crisis warning */}
+          {crisis && (
+            <div className="crisis-warning">
+              ⚠️ <strong>Mycket högt tryck – ta om mätningen!</strong>
+              <br/>Vila 5 minuter och mät igen. Om trycket kvarstår ≥180/110 mmHg — kontakta vården snarast.
+            </div>
+          )}
+
+          {/* Pulse – optional */}
+          <div className="pulse-opt-row">
+            <label className="pulse-opt-label">
+              Puls <span className="optional-tag">valfri</span>
+            </label>
+            <div className="pulse-opt-right">
               <input
                 type="number"
                 inputMode="numeric"
@@ -102,21 +157,11 @@ export default function RegisterView({ onDataChange }) {
                 onChange={e => setPulse(e.target.value)}
                 placeholder="70"
                 min="30" max="220"
-                className="bp-input pulse-input"
+                className="pulse-input-sm"
               />
+              <span className="pulse-unit-sm">slag/min</span>
             </div>
           </div>
-
-          {sys && dia && parseInt(sys) > 50 && parseInt(dia) > 30 && (
-            <div
-              className="bp-preview"
-              style={{ background: getBPBg(parseInt(sys), parseInt(dia)), borderColor: getBPColor(parseInt(sys), parseInt(dia)) }}
-            >
-              <span style={{ color: getBPColor(parseInt(sys), parseInt(dia)) }}>
-                {classifyBP(parseInt(sys), parseInt(dia)).label}
-              </span>
-            </div>
-          )}
 
           {showNote ? (
             <textarea
@@ -133,12 +178,23 @@ export default function RegisterView({ onDataChange }) {
           )}
 
           <button type="submit" className={`btn-save ${saved ? 'btn-saved' : ''}`} disabled={saving}>
-            {saved ? '✓ Sparat!' : saving ? 'Sparar...' : 'Spara'}
+            {saved ? '✓ Sparat!' : saving ? 'Sparar...' : 'Spara mätning'}
           </button>
         </form>
       </div>
 
-      {/* Trend feedback */}
+      {/* Measurement frequency tip */}
+      {showMeasureTip && (
+        <div className="measure-tip-card">
+          <span className="measure-tip-icon">✅</span>
+          <div className="measure-tip-text">
+            <strong>Bra nivåer!</strong> När trycket är stabilt räcker det med 1–2 mätningar per månad (morgon + kväll).
+            Mät tätare de sista veckorna inför årskontrollen.
+          </div>
+        </div>
+      )}
+
+      {/* Trend */}
       {trend && (
         <div className="card trend-card">
           <h3 className="card-title">Trend (14 dagar)</h3>
@@ -177,7 +233,7 @@ export default function RegisterView({ onDataChange }) {
         </div>
       )}
 
-      {/* Today's measurements */}
+      {/* Today */}
       {todayMs.length > 0 && (
         <div className="card">
           <h3 className="card-title">
@@ -236,10 +292,7 @@ function MeasurementRow({ m, onDelete }) {
         {m.pulse && <span className="measurement-pulse">♥ {m.pulse}</span>}
         {m.note && <span className="measurement-note">📝 {m.note}</span>}
       </div>
-      <span
-        className="measurement-cat"
-        style={{ background: bg, color }}
-      >
+      <span className="measurement-cat" style={{ background: bg, color }}>
         {classifyBP(m.sys, m.dia).label}
       </span>
       <button className="btn-delete" onClick={() => onDelete(m.id)} title="Ta bort">×</button>

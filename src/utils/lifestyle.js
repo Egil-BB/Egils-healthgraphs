@@ -1,26 +1,46 @@
 /**
- * Levnadsvanor – baserat på Socialstyrelsens nationella riktlinjer 2011
- * Poängmodell: 0–100 totalt
- *   Tobak:          40p (väger tyngst)
- *   Alkohol:        20p (Q1: 10p, Q2: 10p)
- *   Fysisk aktivitet: 25p (Q1: 12p, Q2: 13p)
- *   Matvanor:       15p (Q1: 4p, Q2: 3p, Q3: 4p, Q4: 4p)
+ * Levnadsvanor – uppdaterad modell (NNR2023, WHO 2020, AHA Life's Essential 8)
+ * 16 frågor, 6 kategorier, 100 poäng totalt
+ *   🚭 Tobak:          35p
+ *   🍷 Alkohol:        20p
+ *   🚶 Fysisk aktivitet: 20p
+ *   😴 Sömn:           10p
+ *   🥗 Matvanor:       10p
+ *   🧠 Stress:          5p
+ *
+ * Villkorliga frågor:
+ *   - tobacco_amount: visas endast om tobacco_status === 'yes' (lagras, ger inga poäng)
+ *   - alcohol_amount, alcohol_binge: hoppas över om alcohol_freq === 'never' → automax 7+5p
  */
 
-export const LIFESTYLE_SECTIONS = [
+export const LIFESTYLE_CATEGORIES = [
   {
     id: 'tobacco',
     title: 'Tobak',
     icon: '🚭',
+    maxScore: 35,
     questions: [
       {
-        id: 'tobacco',
+        id: 'tobacco_status',
         text: 'Röker du för närvarande?',
         options: [
-          { label: 'Nej, har aldrig rökt', value: 'never', score: 40 },
-          { label: 'Nej, slutade för mer än 6 månader sedan', value: 'quit_long', score: 40 },
+          { label: 'Nej, har aldrig rökt', value: 'never', score: 35 },
+          { label: 'Nej, slutade för mer än 6 månader sedan', value: 'quit_long', score: 35 },
           { label: 'Nej, slutade för 1–6 månader sedan', value: 'quit_recent', score: 15 },
           { label: 'Ja, jag röker', value: 'yes', score: 0 },
+        ]
+      },
+      {
+        id: 'tobacco_amount',
+        text: 'Hur många cigaretter röker du per dag?',
+        hint: 'Registreras för att följa nedtrappning. Påverkar inte poängen.',
+        showIf: answers => answers.tobacco_status === 'yes',
+        scoreless: true,
+        options: [
+          { label: '1–5 cigaretter/dag', value: '1_5', score: 0 },
+          { label: '6–10 cigaretter/dag', value: '6_10', score: 0 },
+          { label: '11–20 cigaretter/dag', value: '11_20', score: 0 },
+          { label: 'Mer än 20 cigaretter/dag', value: '20plus', score: 0 },
         ]
       }
     ]
@@ -29,27 +49,42 @@ export const LIFESTYLE_SECTIONS = [
     id: 'alcohol',
     title: 'Alkohol',
     icon: '🍷',
+    maxScore: 20,
     questions: [
       {
-        id: 'alcohol_weekly',
-        text: 'Hur många standardglas dricker du en vanlig vecka?',
+        id: 'alcohol_freq',
+        text: 'Hur ofta dricker du alkohol?',
         options: [
-          { label: 'Dricker <1 standardglas/vecka eller inte alls', value: 0, score: 10 },
-          { label: '1–4 standardglas/vecka', value: 1, score: 8 },
-          { label: '5–9 standardglas/vecka', value: 2, score: 4 },
-          { label: '10–14 standardglas/vecka', value: 3, score: 1 },
-          { label: '15 eller fler standardglas/vecka', value: 4, score: 0 },
+          { label: 'Aldrig', value: 'never', score: 8 },
+          { label: 'Månadsvis eller mer sällan', value: 'monthly', score: 6 },
+          { label: '2–4 gånger per månad', value: '2_4_month', score: 4 },
+          { label: '2–3 gånger per vecka', value: '2_3_week', score: 2 },
+          { label: '4 gånger per vecka eller mer', value: '4plus_week', score: 0 },
+        ]
+      },
+      {
+        id: 'alcohol_amount',
+        text: 'Hur många standardglas dricker du en typisk dag när du dricker?',
+        showIf: answers => answers.alcohol_freq !== 'never',
+        autoScoreWhenHidden: 7,
+        options: [
+          { label: '1–2 glas', value: '1_2', score: 7 },
+          { label: '3–4 glas', value: '3_4', score: 4 },
+          { label: '5–6 glas', value: '5_6', score: 1 },
+          { label: '7 eller fler glas', value: '7plus', score: 0 },
         ]
       },
       {
         id: 'alcohol_binge',
-        text: 'Hur ofta dricker du (som kvinna) 4, eller (som man) 5 standardglas eller mer vid samma tillfälle?',
+        text: 'Hur ofta dricker du 4 standardglas eller mer vid ett och samma tillfälle?',
+        showIf: answers => answers.alcohol_freq !== 'never',
+        autoScoreWhenHidden: 5,
         options: [
-          { label: 'Aldrig', value: 0, score: 10 },
-          { label: 'Mer sällan än 1 gång/månad', value: 1, score: 8 },
-          { label: 'Varje månad', value: 2, score: 5 },
-          { label: 'Varje vecka', value: 3, score: 2 },
-          { label: 'Dagligen eller nästan dagligen', value: 4, score: 0 },
+          { label: 'Aldrig', value: 'never', score: 5 },
+          { label: 'Mer sällan än 1 gång per månad', value: 'rare', score: 3 },
+          { label: 'Varje månad', value: 'monthly', score: 2 },
+          { label: 'Varje vecka', value: 'weekly', score: 1 },
+          { label: 'Dagligen eller nästan dagligen', value: 'daily', score: 0 },
         ]
       }
     ]
@@ -58,76 +93,138 @@ export const LIFESTYLE_SECTIONS = [
     id: 'activity',
     title: 'Fysisk aktivitet',
     icon: '🚶',
+    maxScore: 20,
     questions: [
       {
-        id: 'exercise_vigorous',
-        text: 'Hur mycket tid ägnar du en vanlig vecka åt fysisk träning som får dig att bli andfådd (löpning, gym, bollsport)?',
+        id: 'activity_moderate',
+        text: 'Hur många minuter i veckan ägnar du åt måttlig fysisk aktivitet?\n(rask promenad, cykling, vardagsmotion – du blir lite varm men kan prata)',
         options: [
-          { label: '0 minuter', value: 0, score: 0 },
-          { label: 'Mindre än 30 minuter', value: 1, score: 3 },
-          { label: '30–60 minuter', value: 2, score: 7 },
-          { label: '60–120 minuter', value: 3, score: 10 },
-          { label: 'Mer än 120 minuter', value: 4, score: 12 },
+          { label: '0 minuter', value: '0', score: 0 },
+          { label: 'Mindre än 75 minuter', value: 'lt75', score: 2 },
+          { label: '75–150 minuter', value: '75_150', score: 4 },
+          { label: '150–300 minuter', value: '150_300', score: 7 },
+          { label: 'Mer än 300 minuter', value: 'gt300', score: 8 },
         ]
       },
       {
-        id: 'exercise_everyday',
-        text: 'Hur mycket tid ägnar du en vanlig vecka åt vardagsmotion (promenader, cykling, trädgårdsarbete)? Räkna samman all tid.',
+        id: 'activity_vigorous',
+        text: 'Hur många minuter i veckan ägnar du åt ansträngande aktivitet?\n(löpning, gym, bollsport – du blir andfådd och kan knappt prata)',
         options: [
-          { label: '0 minuter', value: 0, score: 0 },
-          { label: 'Mindre än 30 minuter', value: 1, score: 3 },
-          { label: '30–60 minuter', value: 2, score: 6 },
-          { label: '60–90 minuter', value: 3, score: 9 },
-          { label: '90–150 minuter', value: 4, score: 11 },
-          { label: '150–300 minuter', value: 5, score: 12 },
-          { label: 'Mer än 300 minuter', value: 6, score: 13 },
+          { label: '0 minuter', value: '0', score: 0 },
+          { label: 'Mindre än 75 minuter', value: 'lt75', score: 3 },
+          { label: '75 minuter eller mer', value: 'ge75', score: 6 },
+        ]
+      },
+      {
+        id: 'activity_strength',
+        text: 'Hur ofta tränar du styrka eller muskelstärkande övningar?\n(gym, yoga, trädgårdsarbete med belastning, armhävningar)',
+        options: [
+          { label: '2 gånger per vecka eller mer', value: '2plus', score: 6 },
+          { label: '1 gång per vecka', value: '1_week', score: 4 },
+          { label: 'Mer sällan än 1 gång per vecka', value: 'rare', score: 1 },
+          { label: 'Aldrig', value: 'never', score: 0 },
         ]
       }
     ]
   },
   {
-    id: 'diet',
-    title: 'Matvanor',
-    icon: '🥗',
+    id: 'sleep',
+    title: 'Sömn',
+    icon: '😴',
+    maxScore: 10,
     questions: [
       {
-        id: 'diet_vegetables',
-        text: 'Hur ofta äter du grönsaker och/eller rotfrukter (färska, frysta eller tillagade)?',
+        id: 'sleep_hours',
+        text: 'Hur många timmar sover du i genomsnitt per natt?',
         options: [
-          { label: 'Två gånger per dag eller oftare', value: 0, score: 4 },
-          { label: 'En gång per dag', value: 1, score: 3 },
-          { label: 'Några gånger i veckan', value: 2, score: 2 },
-          { label: 'En gång i veckan eller mer sällan', value: 3, score: 0 },
+          { label: '7–9 timmar', value: '7_9', score: 6 },
+          { label: '6–7 timmar', value: '6_7', score: 4 },
+          { label: '9–10 timmar', value: '9_10', score: 4 },
+          { label: 'Mindre än 6 timmar', value: 'lt6', score: 1 },
+          { label: 'Mer än 10 timmar', value: 'gt10', score: 1 },
         ]
       },
       {
-        id: 'diet_fruit',
-        text: 'Hur ofta äter du frukt och/eller bär (färska, frysta, konserverade, juice)?',
+        id: 'sleep_quality',
+        text: 'Hur ofta känner du dig utvilad när du vaknar?',
         options: [
-          { label: 'Två gånger per dag eller oftare', value: 0, score: 3 },
-          { label: 'En gång per dag', value: 1, score: 2 },
-          { label: 'Några gånger i veckan', value: 2, score: 1 },
-          { label: 'En gång i veckan eller mer sällan', value: 3, score: 0 },
+          { label: 'Nästan alltid', value: 'always', score: 4 },
+          { label: 'Ofta', value: 'often', score: 3 },
+          { label: 'Ibland', value: 'sometimes', score: 2 },
+          { label: 'Sällan eller aldrig', value: 'never', score: 0 },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'food',
+    title: 'Matvanor',
+    icon: '🥗',
+    maxScore: 10,
+    questions: [
+      {
+        id: 'food_vegetables',
+        text: 'Hur ofta äter du grönsaker, rotfrukter eller baljväxter?\n(bönor, linser, kikärtor räknas)',
+        options: [
+          { label: 'Två eller fler portioner dagligen', value: '2plus', score: 3 },
+          { label: 'En portion dagligen', value: '1_daily', score: 2 },
+          { label: 'Några gånger i veckan', value: 'few_week', score: 1 },
+          { label: 'En gång i veckan eller mer sällan', value: 'rare', score: 0 },
         ]
       },
       {
-        id: 'diet_fish',
+        id: 'food_wholegrains',
+        text: 'Hur ofta äter du fullkornsprodukter?\n(fullkornsbröd, havregryn, råg, fullkornsris, fullkornspasta)',
+        options: [
+          { label: 'Dagligen', value: 'daily', score: 2 },
+          { label: 'Några gånger i veckan', value: 'few_week', score: 1 },
+          { label: 'Sällan eller aldrig', value: 'never', score: 0 },
+        ]
+      },
+      {
+        id: 'food_fish',
         text: 'Hur ofta äter du fisk eller skaldjur som huvudrätt?',
         options: [
-          { label: 'Tre gånger i veckan eller oftare', value: 0, score: 4 },
-          { label: 'Två gånger i veckan', value: 1, score: 3 },
-          { label: 'En gång i veckan', value: 2, score: 2 },
-          { label: 'Några gånger i månaden eller mer sällan', value: 3, score: 0 },
+          { label: 'Tre gånger i veckan eller oftare', value: '3plus', score: 3 },
+          { label: 'Två gånger i veckan', value: '2_week', score: 2 },
+          { label: 'En gång i veckan', value: '1_week', score: 1 },
+          { label: 'Mer sällan', value: 'rare', score: 0 },
         ]
       },
       {
-        id: 'diet_junk',
-        text: 'Hur ofta äter du kaffebröd, choklad/godis, chips eller dricker läsk/saft?',
+        id: 'food_junk',
+        text: 'Hur ofta äter du sötsaker, chips, snacks eller dricker söta drycker?\n(inkl. juice, energidryck, läsk)',
         options: [
-          { label: 'Dagligen', value: 0, score: 0 },
-          { label: 'Nästan varje dag', value: 1, score: 1 },
-          { label: 'Några gånger i veckan', value: 2, score: 2 },
-          { label: 'En gång i veckan eller mer sällan', value: 3, score: 4 },
+          { label: 'Mer sällan än en gång i veckan', value: 'rare', score: 2 },
+          { label: 'En gång i veckan', value: '1_week', score: 1 },
+          { label: 'Flera gånger i veckan eller dagligen', value: 'daily', score: 0 },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'stress',
+    title: 'Stress',
+    icon: '🧠',
+    maxScore: 5,
+    questions: [
+      {
+        id: 'stress_control',
+        text: 'Hur ofta har du under den senaste månaden känt att du inte kunnat hantera allt du behöver göra?',
+        options: [
+          { label: 'Aldrig', value: 'never', score: 3 },
+          { label: 'Sällan', value: 'rare', score: 2 },
+          { label: 'Ibland', value: 'sometimes', score: 1 },
+          { label: 'Ofta eller väldigt ofta', value: 'often', score: 0 },
+        ]
+      },
+      {
+        id: 'stress_overwhelmed',
+        text: 'Hur ofta har du under den senaste månaden känt dig överväldigad av svårigheter?',
+        options: [
+          { label: 'Aldrig', value: 'never', score: 2 },
+          { label: 'Sällan', value: 'rare', score: 1 },
+          { label: 'Ibland eller ofta', value: 'often', score: 0 },
         ]
       }
     ]
@@ -136,8 +233,14 @@ export const LIFESTYLE_SECTIONS = [
 
 export function calculateLifestyleScore(answers) {
   let total = 0
-  for (const section of LIFESTYLE_SECTIONS) {
-    for (const q of section.questions) {
+  for (const cat of LIFESTYLE_CATEGORIES) {
+    for (const q of cat.questions) {
+      if (q.scoreless) continue
+      const isVisible = !q.showIf || q.showIf(answers)
+      if (!isVisible) {
+        total += q.autoScoreWhenHidden ?? 0
+        continue
+      }
       const answer = answers[q.id]
       if (answer !== undefined && answer !== null) {
         const option = q.options.find(o => o.value === answer)
@@ -145,20 +248,39 @@ export function calculateLifestyleScore(answers) {
       }
     }
   }
-  return total
+  return Math.round(total)
+}
+
+/** Get all required question IDs given current answers (respects conditional visibility) */
+export function getRequiredQids(answers) {
+  const ids = []
+  for (const cat of LIFESTYLE_CATEGORIES) {
+    for (const q of cat.questions) {
+      if (q.scoreless) continue
+      const visible = !q.showIf || q.showIf(answers)
+      if (visible) ids.push(q.id)
+    }
+  }
+  return ids
 }
 
 /** Returns true = smoker, false = non-smoker, null = unknown */
 export function getSmokingFromLifestyle(answers) {
-  const t = answers?.tobacco
+  const t = answers?.tobacco_status ?? answers?.tobacco // backward compat
   if (!t) return null
   return t === 'yes' || t === 'quit_recent'
 }
 
 export function getScoreLabel(score) {
   if (score >= 80) return { label: 'Utmärkta levnadsvanor', color: '#16a34a' }
-  if (score >= 60) return { label: 'Bra levnadsvanor', color: '#65a30d' }
-  if (score >= 40) return { label: 'Måttliga levnadsvanor', color: '#ca8a04' }
-  if (score >= 20) return { label: 'Mindre bra levnadsvanor', color: '#ea580c' }
-  return { label: 'Ohälsosamma levnadsvanor', color: '#dc2626' }
+  if (score >= 60) return { label: 'Bra, med förbättringspotential', color: '#65a30d' }
+  if (score >= 40) return { label: 'Det finns utrymme att förändra', color: '#ca8a04' }
+  return { label: 'Viktigt att ta tag i', color: '#dc2626' }
+}
+
+export function getScoreFeedback(score) {
+  if (score >= 80) return 'Dina levnadsvanor är riktigt bra den här månaden. Fortsätt så!'
+  if (score >= 60) return 'Du gör mycket rätt — en eller två saker kan förbättras.'
+  if (score >= 40) return 'Prata med din läkare om vilken förändring som ger mest effekt.'
+  return 'Dina levnadsvanor ökar din hälsorisk. Det går att vända!'
 }
