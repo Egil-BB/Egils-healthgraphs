@@ -1,14 +1,15 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'egils-halsografer'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbPromise = null
 
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion) {
+        // Version 1 stores
         if (!db.objectStoreNames.contains('measurements')) {
           const ms = db.createObjectStore('measurements', { keyPath: 'id', autoIncrement: true })
           ms.createIndex('date', 'date')
@@ -28,6 +29,11 @@ function getDB() {
         }
         if (!db.objectStoreNames.contains('profile')) {
           db.createObjectStore('profile', { keyPath: 'key' })
+        }
+        // Version 2 stores
+        if (!db.objectStoreNames.contains('weights')) {
+          const w = db.createObjectStore('weights', { keyPath: 'id', autoIncrement: true })
+          w.createIndex('date', 'date')
         }
       }
     })
@@ -105,6 +111,23 @@ export async function deleteLab(id) {
   return db.delete('labs', id)
 }
 
+// ── Weights ───────────────────────────────────────────────────────────────────
+
+export async function addWeight(data) {
+  const db = await getDB()
+  return db.add('weights', { ...data })
+}
+
+export async function getAllWeights() {
+  const db = await getDB()
+  return db.getAllFromIndex('weights', 'date')
+}
+
+export async function deleteWeight(id) {
+  const db = await getDB()
+  return db.delete('weights', id)
+}
+
 // ── Lifestyle ─────────────────────────────────────────────────────────────────
 
 export async function addLifestyle(data) {
@@ -144,6 +167,7 @@ export async function exportAllData() {
     medications: await db.getAll('medications'),
     labs: await db.getAll('labs'),
     lifestyle: await db.getAll('lifestyle'),
+    weights: await db.getAll('weights'),
     profile: await db.getAll('profile'),
     exportedAt: new Date().toISOString()
   }
@@ -151,7 +175,8 @@ export async function exportAllData() {
 
 export async function importData(data) {
   const db = await getDB()
-  const tx = db.transaction(['measurements', 'medications', 'labs', 'lifestyle', 'profile'], 'readwrite')
+  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'profile']
+  const tx = db.transaction(stores, 'readwrite')
   for (const m of (data.measurements || [])) {
     try { await tx.objectStore('measurements').put(m) } catch {}
   }
@@ -164,9 +189,20 @@ export async function importData(data) {
   for (const l of (data.lifestyle || [])) {
     try { await tx.objectStore('lifestyle').put(l) } catch {}
   }
+  for (const w of (data.weights || [])) {
+    try { await tx.objectStore('weights').put(w) } catch {}
+  }
   for (const p of (data.profile || [])) {
     try { await tx.objectStore('profile').put(p) } catch {}
   }
+  await tx.done
+}
+
+export async function clearAllData() {
+  const db = await getDB()
+  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'profile']
+  const tx = db.transaction(stores, 'readwrite')
+  await Promise.all(stores.map(s => tx.objectStore(s).clear()))
   await tx.done
 }
 

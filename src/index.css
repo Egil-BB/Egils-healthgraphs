@@ -1029,6 +1029,296 @@ html, body, #root { height: 100%; }
   background: var(--success) !important;
 }
 
+/* ─── Subtab scrollable (register) ──────────────────────────────────────── */
+.subtab-bar-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+.subtab-bar-scroll::-webkit-scrollbar { display: none; }
+.subtab-bar-scroll .subtab-btn { white-space: nowrap; flex: none; min-width: 80px; }
+
+.tab-status-dot {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 9px;
+}
+.dot-warn { color: #ca8a04; }
+.dot-danger { color: #dc2626; }
+
+/* ─── NavBar notification dot ────────────────────────────────────────────── */
+.nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-dot {
+  position: absolute;
+  top: -3px;
+  right: -6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+.nav-dot-warn { background: #ca8a04; }
+.nav-dot-danger { background: #dc2626; }
+
+/* ─── Graph sub-tabs (scrollable) ────────────────────────────────────────── */
+.graph-subtab-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow);
+}
+.graph-subtab-scroll::-webkit-scrollbar { display: none; }
+
+.graph-subtab-btn {
+  white-space: nowrap;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.graph-subtab-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ─── Cholesterol + combined graph headers ───────────────────────────────── */
+.chol-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+/* ─── Mini charts (combined view) ────────────────────────────────────────── */
+.combined-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.mini-chart-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+.mini-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.mini-chart-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.mini-chart-latest { font-size: 13px; font-weight: 700; }
+
+.mini-chart-wrapper { height: 130px; }
+
+.mini-chart-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ─── Weight view ────────────────────────────────────────────────────────── */
+.weight-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.weight-big {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.weight-big-unit { font-size: 18px; font-weight: 600; color: var(--text-muted); }
+
+.bmi-box {
+  border: 2px solid;
+  border-radius: 12px;
+  padding: 8px 14px;
+  text-align: center;
+  min-width: 80px;
+}
+.bmi-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+.bmi-value { display: block; font-size: 24px; font-weight: 800; line-height: 1.1; }
+.bmi-cat { display: block; font-size: 12px; font-weight: 600; }
+.bmi-date { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.bmi-disclaimer { font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 4px; }
+
+.weight-list { display: flex; flex-direction: column; gap: 4px; }
+.weight-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.weight-row:last-child { border-bottom: none; }
+.weight-row-date { flex: 1; font-size: 14px; color: var(--text-muted); }
+.weight-row-val { font-size: 15px; font-weight: 700; }
+.weight-row-bmi { font-size: 13px; font-weight: 600; }
+
+/* ─── BMI gauge in Score view ────────────────────────────────────────────── */
+.bmi-score-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.bmi-score-val { font-size: 48px; font-weight: 800; line-height: 1; }
+.bmi-score-cat { font-size: 16px; font-weight: 700; }
+.bmi-score-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.bmi-bar-wrap { position: relative; margin-bottom: 24px; }
+.bmi-bar-track { display: flex; height: 20px; border-radius: 10px; overflow: hidden; }
+.bmi-bar-zone { display: flex; align-items: flex-end; padding-bottom: 24px; position: relative; }
+.bmi-zone-label { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.bmi-marker {
+  position: absolute;
+  top: 22px;
+  font-size: 14px;
+  color: var(--text);
+  transform: translateX(-50%);
+}
+
+/* ─── Lifestyle view ─────────────────────────────────────────────────────── */
+.lifestyle-done-card {
+  text-align: center;
+  padding: 8px 0;
+}
+.lifestyle-score-big {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-block;
+}
+.lifestyle-score-max { font-size: 22px; color: var(--text-muted); font-weight: 600; display: inline-block; vertical-align: bottom; margin-bottom: 8px; }
+.lifestyle-score-label { font-size: 17px; font-weight: 700; margin-top: 4px; }
+.lifestyle-filled-date { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+.lifestyle-next-date { font-size: 13px; color: var(--primary); font-weight: 600; margin-top: 4px; }
+
+.lifestyle-history-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lifestyle-history-row:last-child { border-bottom: none; }
+.lifestyle-history-date { font-size: 13px; color: var(--text-muted); width: 70px; flex-shrink: 0; }
+.lifestyle-history-bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.lifestyle-history-bar { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.lifestyle-history-score { font-size: 13px; font-weight: 700; width: 34px; text-align: right; }
+
+.lifestyle-question { margin-bottom: 18px; }
+.lifestyle-q-text { font-size: 14px; font-weight: 600; margin-bottom: 8px; line-height: 1.45; }
+
+.lifestyle-options { display: flex; flex-direction: column; gap: 6px; }
+
+.lifestyle-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.12s;
+  background: white;
+}
+.lifestyle-option input[type="radio"] { flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+.lifestyle-option span:nth-child(2) { flex: 1; }
+.lifestyle-option-selected {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+
+.lifestyle-opt-score {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.lifestyle-option-selected .lifestyle-opt-score {
+  background: rgba(255,255,255,0.6);
+  color: var(--primary);
+}
+
+.lifestyle-preview-card { }
+.lifestyle-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lifestyle-saved-msg {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #dcfce7;
+  color: #16a34a;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ─── Danger zone ────────────────────────────────────────────────────────── */
+.danger-card { border: 1px solid #fca5a5; }
+
+.btn-danger-outline {
+  padding: 10px 18px;
+  border: 1.5px solid #dc2626;
+  background: white;
+  color: #dc2626;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger-outline:hover { background: #fee2e2; }
+
+.btn-danger {
+  padding: 10px 18px;
+  border: none;
+  background: #dc2626;
+  color: white;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger:disabled { background: #fca5a5; cursor: not-allowed; }
+
+.delete-confirm-form { margin-top: 12px; }
+.delete-confirm-label { font-size: 14px; margin-bottom: 8px; }
+
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 button { touch-action: manipulation; }
 

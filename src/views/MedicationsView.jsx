@@ -62,6 +62,16 @@ const COMMON_MEDICATIONS = [
     ]
   },
   {
+    class: 'Statiner',
+    drugs: [
+      { name: 'Atorvastatin', strengths: ['10 mg', '20 mg', '40 mg', '80 mg'], fass: 'atorvastatin' },
+      { name: 'Rosuvastatin', strengths: ['5 mg', '10 mg', '20 mg', '40 mg'], fass: 'rosuvastatin' },
+      { name: 'Simvastatin', strengths: ['10 mg', '20 mg', '40 mg'], fass: 'simvastatin' },
+      { name: 'Pravastatin', strengths: ['10 mg', '20 mg', '40 mg'], fass: 'pravastatin' },
+      { name: 'Pitavastatin', strengths: ['1 mg', '2 mg', '4 mg'], fass: 'pitavastatin' },
+    ]
+  },
+  {
     class: 'Centralt verkande / övrigt',
     drugs: [
       { name: 'Moxonidin', strengths: ['0,2 mg', '0,3 mg', '0,4 mg'], fass: 'moxonidin' },

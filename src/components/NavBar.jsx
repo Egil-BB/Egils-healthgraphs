@@ -6,7 +6,7 @@ const TABS = [
   { id: 'info', label: 'Info', icon: '📖' }
 ]
 
-export default function NavBar({ active, onNav }) {
+export default function NavBar({ active, onNav, notifications = {} }) {
   return (
     <nav className="navbar">
       {TABS.map(tab => (
@@ -15,7 +15,12 @@ export default function NavBar({ active, onNav }) {
           className={`nav-item ${active === tab.id ? 'nav-item-active' : ''}`}
           onClick={() => onNav(tab.id)}
         >
-          <span className="nav-icon">{tab.icon}</span>
+          <div className="nav-icon-wrap">
+            <span className="nav-icon">{tab.icon}</span>
+            {notifications[tab.id] && (
+              <span className={`nav-dot nav-dot-${notifications[tab.id]}`} />
+            )}
+          </div>
           <span className="nav-label">{tab.label}</span>
         </button>
       ))}
