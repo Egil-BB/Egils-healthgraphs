@@ -113,12 +113,19 @@ export default function ScoreView({ refreshKey }) {
         miss.push('Blodtrycksmätningar (registrera under Blodtryck)')
       }
 
+      // Non-HDL direct
+      const latestNonHdlDirect = labs.filter(l => l.type === 'nonHdl').sort((a, b) => b.date.localeCompare(a.date))[0]
+      if (latestNonHdlDirect) {
+        params.nonHdlDirect = latestNonHdlDirect.value
+        filled.push(`Non-HDL (direkt): ${latestNonHdlDirect.value} mmol/L`)
+      }
+
       // Total cholesterol
       const latestTotal = labs.filter(l => l.type === 'totalCholesterol').sort((a, b) => b.date.localeCompare(a.date))[0]
       if (latestTotal) {
         params.totalCholesterol = latestTotal.value
         filled.push(`Totalkolesterol: ${latestTotal.value} mmol/L`)
-      } else {
+      } else if (!latestNonHdlDirect) {
         miss.push('Totalkolesterol (lägg in under Provsvar)')
       }
 
@@ -127,7 +134,7 @@ export default function ScoreView({ refreshKey }) {
       if (latestHdl) {
         params.hdl = latestHdl.value
         filled.push(`HDL: ${latestHdl.value} mmol/L`)
-      } else {
+      } else if (!latestNonHdlDirect) {
         filled.push('HDL: ej angivet – medelvärde 1,3 används')
       }
 
@@ -135,7 +142,7 @@ export default function ScoreView({ refreshKey }) {
       setMissing(miss)
       setAutoParams(params)
 
-      if (params.age && params.sex && params.sbp && params.totalCholesterol) {
+      if (params.age && params.sex && params.sbp && (params.totalCholesterol || params.nonHdlDirect)) {
         setAutoResult(calculateScore2(params))
         setAutoScenarios(calculateRiskScenarios(params))
       }

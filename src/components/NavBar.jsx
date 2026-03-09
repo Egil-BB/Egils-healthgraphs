@@ -3,6 +3,7 @@ const TABS = [
   { id: 'graph', label: 'Graf', icon: '📈' },
   { id: 'meds', label: 'Mediciner', icon: '💊' },
   { id: 'score', label: 'Risk', icon: '🎯' },
+  { id: 'diary', label: 'Dagbok', icon: '📔' },
   { id: 'info', label: 'Info', icon: '📖' }
 ]
 

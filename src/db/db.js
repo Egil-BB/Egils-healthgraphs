@@ -1,7 +1,7 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'egils-halsografer'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let dbPromise = null
 
@@ -34,6 +34,11 @@ function getDB() {
         if (!db.objectStoreNames.contains('weights')) {
           const w = db.createObjectStore('weights', { keyPath: 'id', autoIncrement: true })
           w.createIndex('date', 'date')
+        }
+        // Version 3 stores
+        if (!db.objectStoreNames.contains('diary_gut')) {
+          const dg = db.createObjectStore('diary_gut', { keyPath: 'id', autoIncrement: true })
+          dg.createIndex('date', 'date')
         }
       }
     })
@@ -140,6 +145,23 @@ export async function getAllLifestyle() {
   return db.getAllFromIndex('lifestyle', 'date')
 }
 
+// ── Gut diary ─────────────────────────────────────────────────────────────────
+
+export async function addGutEntry(data) {
+  const db = await getDB()
+  return db.add('diary_gut', { ...data })
+}
+
+export async function getAllGutEntries() {
+  const db = await getDB()
+  return db.getAllFromIndex('diary_gut', 'date')
+}
+
+export async function deleteGutEntry(id) {
+  const db = await getDB()
+  return db.delete('diary_gut', id)
+}
+
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 export async function getProfile(key) {
@@ -168,6 +190,7 @@ export async function exportAllData() {
     labs: await db.getAll('labs'),
     lifestyle: await db.getAll('lifestyle'),
     weights: await db.getAll('weights'),
+    diary_gut: await db.getAll('diary_gut'),
     profile: await db.getAll('profile'),
     exportedAt: new Date().toISOString()
   }
@@ -175,7 +198,7 @@ export async function exportAllData() {
 
 export async function importData(data) {
   const db = await getDB()
-  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'profile']
+  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'diary_gut', 'profile']
   const tx = db.transaction(stores, 'readwrite')
   for (const m of (data.measurements || [])) {
     try { await tx.objectStore('measurements').put(m) } catch {}
@@ -192,6 +215,9 @@ export async function importData(data) {
   for (const w of (data.weights || [])) {
     try { await tx.objectStore('weights').put(w) } catch {}
   }
+  for (const g of (data.diary_gut || [])) {
+    try { await tx.objectStore('diary_gut').put(g) } catch {}
+  }
   for (const p of (data.profile || [])) {
     try { await tx.objectStore('profile').put(p) } catch {}
   }
@@ -200,7 +226,7 @@ export async function importData(data) {
 
 export async function clearAllData() {
   const db = await getDB()
-  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'profile']
+  const stores = ['measurements', 'medications', 'labs', 'lifestyle', 'weights', 'diary_gut', 'profile']
   const tx = db.transaction(stores, 'readwrite')
   await Promise.all(stores.map(s => tx.objectStore(s).clear()))
   await tx.done

@@ -1319,6 +1319,136 @@ html, body, #root { height: 100%; }
 .delete-confirm-form { margin-top: 12px; }
 .delete-confirm-label { font-size: 14px; margin-bottom: 8px; }
 
+/* ─── Autocomplete ───────────────────────────────────────────────────────── */
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0; right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 200;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.autocomplete-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-align: left;
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover, .autocomplete-item:focus { background: var(--primary-light); }
+.autocomplete-drug-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.autocomplete-drug-class { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+/* ─── Bristol scale ──────────────────────────────────────────────────────── */
+.bristol-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bristol-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+}
+.bristol-card:hover { border-color: var(--primary-mid); background: var(--primary-light); }
+.bristol-num {
+  font-size: 20px;
+  font-weight: 800;
+  min-width: 26px;
+  text-align: center;
+}
+.bristol-desc { font-size: 14px; color: var(--text); }
+
+/* ─── Grade selector ─────────────────────────────────────────────────────── */
+.grade-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.grade-btn {
+  padding: 6px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text);
+}
+.grade-btn:hover { border-color: var(--primary-mid); background: var(--primary-light); }
+.grade-btn-active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+/* ─── Bowel count ────────────────────────────────────────────────────────── */
+.count-row { display: flex; align-items: center; gap: 16px; }
+.count-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--card);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary);
+}
+.count-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+.count-val { font-size: 24px; font-weight: 700; color: var(--text); min-width: 32px; text-align: center; }
+
+/* ─── Info expand ────────────────────────────────────────────────────────── */
+.info-toggle-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 4px 0;
+}
+.info-expand { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ─── Gut diary list ─────────────────────────────────────────────────────── */
+.gut-list { display: flex; flex-direction: column; gap: 0; }
+.gut-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.gut-item:last-child { border-bottom: none; }
+.gut-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.gut-date { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.gut-item-body { display: flex; flex-direction: column; gap: 4px; }
+.gut-bristol { font-size: 14px; font-weight: 600; }
+.gut-meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.gut-chip {
+  font-size: 12px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 2px 8px;
+  color: var(--text-muted);
+}
+.gut-chip-lax { background: #fef3c7; color: #92400e; }
+.gut-notes { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 button { touch-action: manipulation; }
 

@@ -8,26 +8,24 @@ import annotationPlugin from 'chartjs-plugin-annotation'
 import { Line, Bar } from 'react-chartjs-2'
 import {
   getAllMeasurements, getAllMedications, getAllLabs, getAllWeights,
-  getAllLifestyle, getProfile
+  getAllLifestyle, getProfile, getAllGutEntries
 } from '../db/db'
 import { getDailyAverages, getMovingAverage, fillDateGaps, daysAgo, formatDateSv } from '../utils/bp'
 import { getScoreLabel } from '../utils/lifestyle'
+import { getMedGraphTargets } from '../utils/medications'
 
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement, BarElement,
   Title, Tooltip, Legend, Filler, annotationPlugin
 )
 
-const STATIN_DRUGS = ['Atorvastatin', 'Rosuvastatin', 'Simvastatin', 'Pravastatin', 'Pitavastatin', 'Fluvastatin']
-function isStatin(name) {
-  return STATIN_DRUGS.some(s => name.toLowerCase().includes(s.toLowerCase()))
-}
-
 const GRAPH_TABS = [
   { id: 'bp', label: 'Blodtryck' },
   { id: 'cholesterol', label: 'Kolesterol' },
+  { id: 'glucose', label: 'Socker' },
   { id: 'weight', label: 'Vikt' },
   { id: 'lifestyle', label: 'Levnadsvanor' },
+  { id: 'gut', label: 'Tarm' },
   { id: 'combined', label: 'Kombinerad' },
 ]
 
@@ -67,7 +65,9 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
 
   const annotations = {}
   const medColors = ['#7c3aed', '#b45309', '#0f766e', '#be185d', '#1d4ed8']
-  medications.filter(med => !isStatin(med.name)).forEach((med, i) => {
+
+  // Only BP meds on this graph
+  medications.filter(med => getMedGraphTargets(med.name).includes('bp')).forEach((med, i) => {
     const idx = filled.findIndex(d => d.date >= med.startDate)
     if (idx < 0) return
     annotations[`med_${i}`] = {
@@ -80,8 +80,13 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
       }
     }
   })
+
+  // Systolic reference lines
   annotations.t130 = { type: 'line', yMin: 130, yMax: 130, borderColor: 'rgba(22,163,74,0.5)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: '130', position: 'end', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
   annotations.t140 = { type: 'line', yMin: 140, yMax: 140, borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: '140', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
+  // Diastolic reference lines
+  annotations.d80 = { type: 'line', yMin: 80, yMax: 80, borderColor: 'rgba(22,163,74,0.35)', borderWidth: 1, borderDash: [3, 5], label: { display: true, content: '80', position: 'start', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
+  annotations.d90 = { type: 'line', yMin: 90, yMax: 90, borderColor: 'rgba(220,38,38,0.35)', borderWidth: 1, borderDash: [3, 5], label: { display: true, content: '90', position: 'start', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
 
   const datasets = [
     { label: 'Systoliskt', data: filled.map(d => d.avgSys), borderColor: '#1d4ed8', backgroundColor: 'rgba(29,78,216,0.08)', borderWidth: 2, pointRadius: filled.map(d => d.count > 0 ? 3 : 0), pointHoverRadius: 6, spanGaps: false, tension: 0.2, fill: false, order: 2 },
@@ -135,8 +140,8 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
       <div className="card chart-card">
         <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
         <div className="chart-legend-zones">
-          <span className="zone-chip" style={{ background: '#dcfce7', color: '#16a34a' }}>--- 130 optimal</span>
-          <span className="zone-chip" style={{ background: '#fee2e2', color: '#dc2626' }}>--- 140 förhöjt</span>
+          <span className="zone-chip" style={{ background: '#dcfce7', color: '#16a34a' }}>--- 130/80 optimal</span>
+          <span className="zone-chip" style={{ background: '#fee2e2', color: '#dc2626' }}>--- 140/90 förhöjt</span>
         </div>
       </div>
       {filtered.length > 0 && (
@@ -157,7 +162,6 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
 // ── Cholesterol graph ─────────────────────────────────────────────────────────
 
 function CholesterolGraph({ labs, medications }) {
-  // Compute non-HDL per date
   const byDate = {}
   for (const lab of labs) {
     if (!byDate[lab.date]) byDate[lab.date] = {}
@@ -177,14 +181,14 @@ function CholesterolGraph({ labs, medications }) {
   }
 
   const labels = points.map(p => dateLabel(p.date, points.length > 6))
-  const statins = medications.filter(m => isStatin(m.name))
+  const cholMeds = medications.filter(m => getMedGraphTargets(m.name).includes('cholesterol'))
   const medColors = ['#7c3aed', '#b45309', '#0f766e']
 
   const annotations = {}
-  statins.forEach((med, i) => {
+  cholMeds.forEach((med, i) => {
     const idx = points.findIndex(p => p.date >= med.startDate)
     if (idx < 0) return
-    annotations[`statin_${i}`] = {
+    annotations[`chol_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
       label: { display: true, content: med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
@@ -221,7 +225,97 @@ function CholesterolGraph({ labs, medications }) {
           Senast: {latest.nonHdl} mmol/L {isHigh ? '↑' : '✓'}
         </span>
       </div>
-      <p className="card-desc">Non-HDL = totalkolesterol − HDL. Mål: &lt;3,4 mmol/L. Statiner markeras i grafen.</p>
+      <p className="card-desc">Non-HDL = totalkolesterol − HDL. Mål: &lt;3,4 mmol/L. Statiner och ezetimib markeras.</p>
+      <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
+    </div>
+  )
+}
+
+// ── Glucose graph ─────────────────────────────────────────────────────────────
+
+function GlucoseGraph({ labs, medications }) {
+  const glucosePoints = labs
+    .filter(l => l.type === 'glucose')
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  const hba1cPoints = labs
+    .filter(l => l.type === 'hba1c')
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  if (glucosePoints.length === 0 && hba1cPoints.length === 0) {
+    return <EmptyState icon="🩸" text="Inga sockervärden registrerade. Lägg till P-Glukos eller HbA1c under Provsvar." />
+  }
+
+  const allDates = [...new Set([...glucosePoints.map(p => p.date), ...hba1cPoints.map(p => p.date)])].sort()
+  const labels = allDates.map(d => dateLabel(d, allDates.length > 6))
+
+  const glucoseByDate = Object.fromEntries(glucosePoints.map(p => [p.date, p.value]))
+  const hba1cByDate = Object.fromEntries(hba1cPoints.map(p => [p.date, p.value]))
+
+  const datasets = []
+  if (glucosePoints.length > 0) {
+    datasets.push({
+      label: 'P-Glukos (mmol/L)',
+      data: allDates.map(d => glucoseByDate[d] ?? null),
+      borderColor: '#dc2626',
+      backgroundColor: 'rgba(220,38,38,0.1)',
+      borderWidth: 2.5, pointRadius: 5, pointHoverRadius: 7, tension: 0.2, spanGaps: false, fill: false
+    })
+  }
+  if (hba1cPoints.length > 0) {
+    datasets.push({
+      label: 'HbA1c (mmol/mol)',
+      data: allDates.map(d => hba1cByDate[d] ?? null),
+      borderColor: '#ea580c',
+      backgroundColor: 'transparent',
+      borderWidth: 2, borderDash: [6, 3], pointRadius: 4, tension: 0.2, spanGaps: false,
+      yAxisID: 'hba1c'
+    })
+  }
+
+  const glucoseMeds = medications.filter(m => getMedGraphTargets(m.name).includes('glucose'))
+  const medColors = ['#7c3aed', '#b45309', '#0f766e', '#be185d']
+  const annotations = {}
+  glucoseMeds.forEach((med, i) => {
+    const idx = allDates.findIndex(d => d >= med.startDate)
+    if (idx < 0) return
+    annotations[`glu_${i}`] = {
+      type: 'line', xMin: idx, xMax: idx,
+      borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
+      label: { display: true, content: med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+    }
+  })
+  if (glucosePoints.length > 0) {
+    annotations.gluRef = { type: 'line', yMin: 6.1, yMax: 6.1, borderColor: 'rgba(220,38,38,0.4)', borderWidth: 1.5, borderDash: [5, 5], label: { display: true, content: '6,1', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
+  }
+
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 12 }, padding: 10 } },
+      annotation: { annotations }
+    },
+    scales: {
+      x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      y: { title: { display: true, text: 'mmol/L', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      ...(hba1cPoints.length > 0 ? { hba1c: { position: 'right', title: { display: true, text: 'mmol/mol', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { drawOnChartArea: false } } } : {})
+    }
+  }
+
+  const latestGlu = glucosePoints.length ? glucosePoints[glucosePoints.length - 1] : null
+  const latestHba1c = hba1cPoints.length ? hba1cPoints[hba1cPoints.length - 1] : null
+
+  return (
+    <div className="card chart-card">
+      <div className="chol-header">
+        <span className="card-title">Blodsocker</span>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>
+          {latestGlu && <span style={{ color: latestGlu.value > 6.1 ? '#dc2626' : '#16a34a' }}>Glukos: {latestGlu.value} </span>}
+          {latestHba1c && <span style={{ color: latestHba1c.value > 48 ? '#dc2626' : '#16a34a' }}>HbA1c: {latestHba1c.value}</span>}
+        </span>
+      </div>
+      <p className="card-desc">Fasteplasmaglukos mål &lt;6,1 mmol/L · HbA1c mål &lt;48 mmol/mol. Diabetesmediciner markeras.</p>
       <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
     </div>
   )
@@ -229,7 +323,7 @@ function CholesterolGraph({ labs, medications }) {
 
 // ── Weight graph ──────────────────────────────────────────────────────────────
 
-function WeightGraph({ weights, heightCm }) {
+function WeightGraph({ weights, heightCm, medications }) {
   if (weights.length === 0) {
     return <EmptyState icon="⚖️" text="Inga vikter registrerade. Lägg till vikt under Registrera → Vikt." />
   }
@@ -252,13 +346,26 @@ function WeightGraph({ weights, heightCm }) {
     datasets.push({ label: 'BMI', data: bmiData, borderColor: '#ea580c', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], pointRadius: 3, tension: 0.2, yAxisID: 'bmi' })
   }
 
+  const weightMeds = medications.filter(m => getMedGraphTargets(m.name).includes('weight'))
+  const medColors = ['#7c3aed', '#b45309', '#0f766e', '#be185d']
+  const annotations = {}
+  weightMeds.forEach((med, i) => {
+    const idx = sorted.findIndex(w => w.date >= med.startDate)
+    if (idx < 0) return
+    annotations[`wt_${i}`] = {
+      type: 'line', xMin: idx, xMax: idx,
+      borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
+      label: { display: true, content: med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+    }
+  })
+
   const options = {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 12 }, padding: 10 } },
       tooltip: { callbacks: { label: item => item.dataset.label === 'BMI' ? `BMI: ${item.raw}` : `Vikt: ${item.raw} kg` } },
-      annotation: {}
+      annotation: { annotations }
     },
     scales: {
       x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
@@ -333,6 +440,82 @@ function LifestyleGraph({ lifestyle }) {
   )
 }
 
+// ── Gut diary graph ────────────────────────────────────────────────────────────
+
+const BRISTOL_COLORS = {
+  1: '#92400e', 2: '#b45309', 3: '#16a34a', 4: '#16a34a',
+  5: '#ca8a04', 6: '#dc2626', 7: '#dc2626'
+}
+
+function GutGraph({ gutEntries }) {
+  if (gutEntries.length === 0) {
+    return <EmptyState icon="📔" text="Inga tarmdagboksposter. Registrera under Dagbok-fliken." />
+  }
+
+  const sorted = [...gutEntries].sort((a, b) => a.date.localeCompare(b.date))
+  const last30 = sorted.filter(e => e.date >= daysAgo(90))
+  const display = last30.length > 0 ? last30 : sorted.slice(-20)
+
+  const labels = display.map(e => dateLabel(e.date, true))
+  const bristolData = display.map(e => e.bristolType)
+  const countData = display.map(e => e.bowelCount)
+  const bgColors = display.map(e => (BRISTOL_COLORS[e.bristolType] || '#64748b') + 'cc')
+
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 12 }, padding: 10 } },
+      tooltip: {
+        callbacks: {
+          label: item => {
+            if (item.datasetIndex === 0) return `Bristol typ ${item.raw}`
+            return `Tömningar: ${item.raw}`
+          }
+        }
+      },
+      annotation: {
+        annotations: {
+          normalMin: { type: 'line', yMin: 3, yMax: 3, borderColor: 'rgba(22,163,74,0.4)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: 'Typ 3', position: 'start', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } },
+          normalMax: { type: 'line', yMin: 4, yMax: 4, borderColor: 'rgba(22,163,74,0.4)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: 'Typ 4', position: 'start', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      y: { min: 0, max: 8, title: { display: true, text: 'Bristol-typ', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      count: { position: 'right', min: 0, max: 8, title: { display: true, text: 'Tömn/dag', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { drawOnChartArea: false } }
+    }
+  }
+
+  return (
+    <div className="card chart-card">
+      <div className="chol-header">
+        <span className="card-title">Tarmdagbok (90 dagar)</span>
+        <span style={{ color: '#64748b', fontSize: 13 }}>
+          Typ 3–4 = optimal
+        </span>
+      </div>
+      <p className="card-desc">Bristol-typ (vänster) och antal tömningar/dag (höger).</p>
+      <div className="chart-wrapper">
+        <Line
+          data={{
+            labels,
+            datasets: [
+              { label: 'Bristol-typ', data: bristolData, borderColor: '#7c3aed', backgroundColor: bgColors, borderWidth: 2.5, pointRadius: 6, pointBackgroundColor: bgColors, tension: 0.2 },
+              { label: 'Tömningar/dag', data: countData, borderColor: '#0891b2', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: 4, tension: 0.2, yAxisID: 'count' }
+            ]
+          }}
+          options={options}
+        />
+      </div>
+      <div className="chart-legend-zones">
+        <span className="zone-chip" style={{ background: '#dcfce7', color: '#16a34a' }}>Typ 3–4 optimal</span>
+        <span className="zone-chip" style={{ background: '#fee2e2', color: '#dc2626' }}>Typ 1–2 hård · 6–7 lös</span>
+      </div>
+    </div>
+  )
+}
+
 // ── Combined mini-charts ──────────────────────────────────────────────────────
 
 function MiniLine({ data, labels, color, unit, refLine, title, latest, latestColor }) {
@@ -396,7 +579,6 @@ function MiniBar({ data, labels, title, latest, latestColor }) {
 }
 
 function CombinedGraph({ measurements, labs, weights, lifestyle, heightCm }) {
-  // BP: 90-day systolic daily averages
   const fromDate = daysAgo(90)
   const toDate = new Date().toISOString().slice(0, 10)
   const filteredMs = measurements.filter(m => m.date >= fromDate)
@@ -406,7 +588,6 @@ function CombinedGraph({ measurements, labs, weights, lifestyle, heightCm }) {
   const bpData = filled.map(d => d.avgSys)
   const latestSys = daily.length ? daily[daily.length - 1].avgSys : null
 
-  // Cholesterol: non-HDL
   const byDate = {}
   for (const lab of labs) {
     if (!byDate[lab.date]) byDate[lab.date] = {}
@@ -421,11 +602,9 @@ function CombinedGraph({ measurements, labs, weights, lifestyle, heightCm }) {
   }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date))
   const latestNonHdl = cholPoints.length ? cholPoints[cholPoints.length - 1].nonHdl : null
 
-  // Weight
   const sortedW = [...weights].sort((a, b) => a.date.localeCompare(b.date)).filter(w => w.date >= fromDate)
   const latestW = weights.length ? [...weights].sort((a, b) => b.date.localeCompare(a.date))[0] : null
 
-  // Lifestyle
   const sortedL = [...lifestyle].sort((a, b) => a.date.localeCompare(b.date))
   const latestL = sortedL.length ? sortedL[sortedL.length - 1] : null
 
@@ -499,21 +678,23 @@ export default function GraphView({ refreshKey }) {
   const [labs, setLabs] = useState([])
   const [weights, setWeights] = useState([])
   const [lifestyle, setLifestyle] = useState([])
+  const [gutEntries, setGutEntries] = useState([])
   const [heightCm, setHeightCm] = useState(null)
   const [subTab, setSubTab] = useState('bp')
   const [bpPeriod, setBpPeriod] = useState(1)
 
   useEffect(() => {
     async function load() {
-      const [ms, meds, ls, ws, lf, profile] = await Promise.all([
+      const [ms, meds, ls, ws, lf, gut, profile] = await Promise.all([
         getAllMeasurements(), getAllMedications(), getAllLabs(),
-        getAllWeights(), getAllLifestyle(), getProfile('patientProfile')
+        getAllWeights(), getAllLifestyle(), getAllGutEntries(), getProfile('patientProfile')
       ])
       setMeasurements(ms.sort((a, b) => a.timestamp.localeCompare(b.timestamp)))
       setMedications(meds.sort((a, b) => a.startDate.localeCompare(b.startDate)))
       setLabs(ls)
       setWeights(ws)
       setLifestyle(lf)
+      setGutEntries(gut)
       if (profile?.height) setHeightCm(parseFloat(profile.height))
     }
     load()
@@ -521,7 +702,6 @@ export default function GraphView({ refreshKey }) {
 
   return (
     <div className="view-content" style={{ paddingTop: 0 }}>
-      {/* Sub-tab scroll bar */}
       <div className="graph-subtab-scroll">
         {GRAPH_TABS.map(t => (
           <button
@@ -535,30 +715,25 @@ export default function GraphView({ refreshKey }) {
       </div>
 
       {subTab === 'bp' && (
-        <BPGraph
-          measurements={measurements}
-          medications={medications}
-          period={bpPeriod}
-          setPeriod={setBpPeriod}
-        />
+        <BPGraph measurements={measurements} medications={medications} period={bpPeriod} setPeriod={setBpPeriod} />
       )}
       {subTab === 'cholesterol' && (
         <CholesterolGraph labs={labs} medications={medications} />
       )}
+      {subTab === 'glucose' && (
+        <GlucoseGraph labs={labs} medications={medications} />
+      )}
       {subTab === 'weight' && (
-        <WeightGraph weights={weights} heightCm={heightCm} />
+        <WeightGraph weights={weights} heightCm={heightCm} medications={medications} />
       )}
       {subTab === 'lifestyle' && (
         <LifestyleGraph lifestyle={lifestyle} />
       )}
+      {subTab === 'gut' && (
+        <GutGraph gutEntries={gutEntries} />
+      )}
       {subTab === 'combined' && (
-        <CombinedGraph
-          measurements={measurements}
-          labs={labs}
-          weights={weights}
-          lifestyle={lifestyle}
-          heightCm={heightCm}
-        />
+        <CombinedGraph measurements={measurements} labs={labs} weights={weights} lifestyle={lifestyle} heightCm={heightCm} />
       )}
     </div>
   )

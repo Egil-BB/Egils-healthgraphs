@@ -39,11 +39,13 @@ const COEFFICIENTS = {
  * @param {number|null} params.hdl – HDL-kolesterol (mmol/L), valfritt
  * @returns {{ risk: number, riskPercent: string, category: object, nonHdl: number }}
  */
-export function calculateScore2({ age, sex, smoking, sbp, totalCholesterol, hdl = null }) {
+export function calculateScore2({ age, sex, smoking, sbp, totalCholesterol, hdl = null, nonHdlDirect = null }) {
   const c = COEFFICIENTS[sex] || COEFFICIENTS.male
 
-  // Non-HDL kolesterol
-  const nonHdl = hdl != null ? totalCholesterol - hdl : totalCholesterol - 1.3
+  // Non-HDL kolesterol – prioritet: direkt mätt > total-HDL > total-1.3
+  const nonHdl = nonHdlDirect != null
+    ? nonHdlDirect
+    : (hdl != null ? totalCholesterol - hdl : totalCholesterol - 1.3)
   const nonHdlClamped = Math.max(0.5, Math.min(nonHdl, 10))
 
   // Centrerade variabler
