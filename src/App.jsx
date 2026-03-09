@@ -11,6 +11,7 @@ import ScoreView from './views/ScoreView'
 import KnowledgeView from './views/KnowledgeView'
 import SettingsView from './views/SettingsView'
 import DiaryView from './views/DiaryView'
+import MictView from './views/MictView'
 import { getAllLifestyle, getProfile } from './db/db'
 import { DEFAULT_ENABLED_IDS, buildEnabledTabs } from './utils/modules'
 
@@ -125,6 +126,10 @@ export default function App() {
           <DiaryView onDataChange={handleDataChange} />
         )}
 
+        {tab === 'micturition' && (
+          <MictView onDataChange={handleDataChange} />
+        )}
+
         {tab === 'info' && (
           <KnowledgeView />
         )}
@@ -144,7 +149,10 @@ export default function App() {
       )}
       {tab === 'settings' && (
         <nav className="navbar">
-          <button className="nav-item" onClick={() => setTab('register')} style={{ flex: 1 }}>
+          <button className="nav-item" onClick={() => {
+            const tabs = buildEnabledTabs(enabledModules)
+            setTab(tabs.length > 0 ? tabs[0].id : 'register')
+          }} style={{ flex: 1 }}>
             ← Tillbaka
           </button>
         </nav>

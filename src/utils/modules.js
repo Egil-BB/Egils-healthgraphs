@@ -8,7 +8,7 @@ export const ALL_MODULES = [
     id: 'register',
     label: 'Registrera',
     icon: '💓',
-    alwaysOn: true,
+    alwaysOn: false,
     defaultOn: true,
     desc: 'Blodtryck, provsvar, vikt och levnadsvanor',
   },
@@ -16,7 +16,7 @@ export const ALL_MODULES = [
     id: 'graph',
     label: 'Graf',
     icon: '📈',
-    alwaysOn: true,
+    alwaysOn: false,
     defaultOn: true,
     desc: 'Kurvor och trender över tid',
   },
@@ -24,7 +24,7 @@ export const ALL_MODULES = [
     id: 'score',
     label: 'Risk',
     icon: '🎯',
-    alwaysOn: true,
+    alwaysOn: false,
     defaultOn: true,
     desc: 'SCORE2 kardiovaskulär 10-årsrisk och BMI',
   },
@@ -45,6 +45,14 @@ export const ALL_MODULES = [
     desc: 'Tarmdagbok med Bristolskalan',
   },
   {
+    id: 'micturition',
+    label: 'Miktionslista',
+    icon: '🫧',
+    alwaysOn: false,
+    defaultOn: false,
+    desc: 'Miktionslista för inkontinensutredning och remisser',
+  },
+  {
     id: 'info',
     label: 'Info',
     icon: '📖',
@@ -57,5 +65,5 @@ export const ALL_MODULES = [
 export const DEFAULT_ENABLED_IDS = ALL_MODULES.filter(m => m.defaultOn).map(m => m.id)
 
 export function buildEnabledTabs(enabledIds) {
-  return ALL_MODULES.filter(m => m.alwaysOn || enabledIds.includes(m.id))
+  return ALL_MODULES.filter(m => enabledIds.includes(m.id))
 }

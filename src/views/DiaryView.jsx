@@ -2,14 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { addGutEntry, getAllGutEntries, deleteGutEntry, getProfile, setProfile } from '../db/db'
 import { formatDateSv } from '../utils/bp'
 
+// Färger: typ 1-2 mörkbrunt (förstoppning), typ 3 brungrön, typ 4 grön (centrum),
+// typ 5 gulgrön (normalt), typ 6-7 gult (diarré)
 const BRISTOL_TYPES = [
-  { type: 1, desc: 'Hårda klumpar, som nötter', color: '#92400e' },
-  { type: 2, desc: 'Korvformad, klumpig', color: '#b45309' },
-  { type: 3, desc: 'Korvformad med sprickor', color: '#16a34a' },
-  { type: 4, desc: 'Mjuk och slät korv', color: '#16a34a' },
-  { type: 5, desc: 'Mjuka klumpar, väldefinierade', color: '#ca8a04' },
-  { type: 6, desc: 'Fluffig, ojämna kanter, grötig', color: '#dc2626' },
-  { type: 7, desc: 'Helt flytande, ingen fast form', color: '#dc2626' },
+  { type: 1, desc: 'Hårda klumpar, som nötter', color: '#3d1c00', normal: false },
+  { type: 2, desc: 'Korvformad, klumpig', color: '#7a3a0a', normal: false },
+  { type: 3, desc: 'Korvformad med sprickor', color: '#7a6c3e', normal: true },
+  { type: 4, desc: 'Mjuk och slät korv', color: '#16a34a', normal: true },
+  { type: 5, desc: 'Mjuka klumpar, väldefinierade', color: '#84cc16', normal: true },
+  { type: 6, desc: 'Fluffig, ojämna kanter, grötig', color: '#d97706', normal: false },
+  { type: 7, desc: 'Helt flytande, ingen fast form', color: '#eab308', normal: false },
 ]
 
 const DEFAULT_LAXATIVES = ['Movicol', 'Cilaxoral', 'Resolor', 'Imodium', 'Vi-Siblin', 'Inolaxol']
@@ -48,6 +50,7 @@ export default function DiaryView({ onDataChange }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [showInfo, setShowInfo] = useState(false)
+  const [showBristolImg, setShowBristolImg] = useState(false)
   const [laxMeds, setLaxMeds] = useState(DEFAULT_LAXATIVES)
   const [editingLax, setEditingLax] = useState(false)
   const [newLaxName, setNewLaxName] = useState('')
@@ -197,8 +200,13 @@ export default function DiaryView({ onDataChange }) {
 
             {/* Bristol multi-select */}
             <div className="form-group">
-              <label>Avföringens konsistens – klicka för varje tömning *</label>
-              <p className="form-hint">Klicka en typ per tarmrtömning. Du kan välja samma typ flera gånger.</p>
+              <div className="bristol-label-row">
+                <label>Avföringens konsistens – klicka för varje tömning *</label>
+                <button type="button" className="bristol-img-btn" onClick={() => setShowBristolImg(true)}>
+                  🖼 Visa bild
+                </button>
+              </div>
+              <p className="form-hint">Klicka en typ per tömning. Typ 3–5 = normalt. Typ 1–2 = förstoppning. Typ 6–7 = diarré.</p>
               <div className="bristol-grid">
                 {BRISTOL_TYPES.map(b => {
                   const count = bristolCountOf(form.bristolTypes, b.type)
@@ -206,12 +214,13 @@ export default function DiaryView({ onDataChange }) {
                     <div key={b.type} className="bristol-card-row">
                       <button
                         type="button"
-                        className={`bristol-card ${count > 0 ? 'bristol-card-active' : ''}`}
-                        style={count > 0 ? { borderColor: b.color, background: b.color + '15' } : {}}
+                        className={`bristol-card ${count > 0 ? 'bristol-card-active' : ''} ${b.normal ? 'bristol-card-normal' : ''}`}
+                        style={count > 0 ? { borderColor: b.color, background: b.color + '18' } : {}}
                         onClick={() => addBristol(b.type)}
                       >
                         <span className="bristol-num" style={{ color: b.color }}>{b.type}</span>
                         <span className="bristol-desc">{b.desc}</span>
+                        {b.normal && <span className="bristol-normal-dot" />}
                         {count > 0 && <span className="bristol-badge" style={{ background: b.color }}>×{count}</span>}
                       </button>
                       {count > 0 && (
@@ -303,6 +312,37 @@ export default function DiaryView({ onDataChange }) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Bristol chart image modal */}
+      {showBristolImg && (
+        <div className="bristol-modal-overlay" onClick={() => setShowBristolImg(false)}>
+          <div className="bristol-modal" onClick={e => e.stopPropagation()}>
+            <div className="bristol-modal-header">
+              <h3>Bristolskalan</h3>
+              <button className="bristol-modal-close" onClick={() => setShowBristolImg(false)}>×</button>
+            </div>
+            <img
+              src="/bristol-stool-chart.png"
+              alt="Bristolskalan – avföringens konsistens typ 1–7"
+              className="bristol-modal-img"
+              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }}
+            />
+            <div className="bristol-modal-fallback" style={{ display: 'none' }}>
+              <div className="bristol-scale-list">
+                {BRISTOL_TYPES.map(b => (
+                  <div key={b.type} className="bristol-scale-row">
+                    <span className="bristol-scale-num" style={{ color: b.color }}>Typ {b.type}</span>
+                    <span className="bristol-scale-bar" style={{ background: b.color + '30', borderLeft: `4px solid ${b.color}` }}>
+                      {b.desc}{b.normal ? ' ✓' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="bristol-modal-note">Typ 3–5 är normalt. Klicka utanför för att stänga.</p>
+          </div>
         </div>
       )}
 
