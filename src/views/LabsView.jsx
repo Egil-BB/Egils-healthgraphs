@@ -31,6 +31,7 @@ const COLUMN_MAPPINGS = [
   { field: 'tsh', keywords: ['tsh'], exclude: [] },
   { field: 'crp', keywords: ['crp'], exclude: ['hscrp', 'pna'] },
   { field: 'uricAcid', keywords: ['urat', 'urinsyra', 'ursyra'], exclude: [] },
+  { field: 'psa', keywords: ['psa'], exclude: [] },
 ]
 
 function matchColumn(header) {
@@ -325,9 +326,6 @@ export default function LabsView({ onDataChange }) {
           )}
         </div>
         <p className="card-desc">Blodprovsvärden används i SCORE2-riskberäkning.</p>
-        <div className="nonhdl-tip">
-          💡 <strong>Non-HDL-kolesterol</strong> (totalkolesterol − HDL) visar de "farliga fetterna" bäst.
-        </div>
         <div className="import-1177-section">
           <button className="btn-import-1177" onClick={() => fileRef.current?.click()}>
             ⬆ Importera provsvar från 1177 (.xlsx)

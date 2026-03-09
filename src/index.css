@@ -2077,6 +2077,64 @@ button { touch-action: manipulation; }
   font-size: 12px; color: var(--text-muted);
 }
 
+/* ─── Waist circumference ────────────────────────────────────────────────── */
+.waist-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; font-size: 14px; }
+.waist-label { color: var(--text-muted); font-size: 13px; }
+.waist-val { font-weight: 700; }
+.waist-risk { font-size: 12px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+.waist-risk-ok { background: #dcfce7; color: #16a34a; }
+.waist-risk-warn { background: #fef9c3; color: #ca8a04; }
+.waist-risk-high { background: #fee2e2; color: #dc2626; }
+.weight-row-waist { font-size: 12px; color: var(--text-muted); }
+.form-hint-inline { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+
+/* ─── Medication warnings ────────────────────────────────────────────────── */
+.med-warning { border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.med-warning:last-child { margin-bottom: 0; }
+.med-warning-dehydration { background: #eff6ff; border: 1.5px solid #93c5fd; }
+.med-warning-danger { background: #fee2e2; border: 1.5px solid #fca5a5; }
+.med-warning-warn { background: #fffbeb; border: 1.5px solid #fcd34d; }
+.med-warning-info { background: #f0fdf4; border: 1.5px solid #86efac; }
+.med-warning-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.med-warning-icon { font-size: 18px; }
+.med-warning-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.med-warning-text { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 6px; }
+.med-warning-link { font-size: 12px; color: var(--primary); text-decoration: underline; }
+
+/* ─── Clinical flags (ScoreView) ─────────────────────────────────────────── */
+.clin-flag { border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.clin-flag:last-child { margin-bottom: 0; }
+.clin-flag-danger { background: #fee2e2; border: 1.5px solid #fca5a5; }
+.clin-flag-warn { background: #fffbeb; border: 1.5px solid #fcd34d; }
+.clin-flag-info { background: #eff6ff; border: 1.5px solid #93c5fd; }
+.clin-flag-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.clin-flag-icon { font-size: 20px; }
+.clin-flag-title { font-size: 14px; font-weight: 700; }
+.clin-flag-details { font-size: 13px; color: var(--text); margin: 0 0 6px 20px; }
+.clin-flag-details li { margin-bottom: 2px; }
+.clin-flag-advice { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 6px; }
+.clin-flag-link { font-size: 12px; color: var(--primary); text-decoration: underline; }
+.score-no-flags { font-size: 14px; color: var(--success); font-weight: 600; padding: 4px 0; }
+
+/* ─── PSA (ScoreView) ────────────────────────────────────────────────────── */
+.psa-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.psa-val { font-size: 22px; font-weight: 800; color: var(--text); }
+.psa-date { font-size: 13px; color: var(--text-muted); }
+.psa-rec { border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.psa-rec-info { background: #eff6ff; border: 1.5px solid #93c5fd; }
+.psa-rec-warn { background: #fffbeb; border: 1.5px solid #fcd34d; }
+.psa-rec-danger { background: #fee2e2; border: 1.5px solid #fca5a5; }
+.psa-rec-next { font-size: 14px; font-weight: 700; display: block; margin-bottom: 4px; }
+.psa-rec-comment { font-size: 13px; color: var(--text); margin: 0; }
+.psa-disclaimer { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+/* ─── Scenarios: combined highlight ─────────────────────────────────────── */
+.scenario-combined { background: var(--primary-light) !important; }
+
+/* ─── Knowledge list ─────────────────────────────────────────────────────── */
+.knowledge-list { padding-left: 18px; margin: 4px 0 8px 0; display: flex; flex-direction: column; gap: 3px; }
+.knowledge-list li { font-size: 14px; color: var(--text); }
+
 /* Print styles for micturition report */
 @media print {
   .app-header, .navbar, .card:not(.mict-print-target),
