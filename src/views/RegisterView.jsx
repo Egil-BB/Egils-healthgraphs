@@ -6,13 +6,13 @@ import {
   formatTimeSv, TIME_OF_DAY_LABELS, daysAgo
 } from '../utils/bp'
 
-function get14DayAvg(measurements) {
-  const from = daysAgo(14)
+function getPeriodAvg(measurements, days) {
+  const from = daysAgo(days)
   const recent = measurements.filter(m => m.date >= from)
   if (recent.length < 2) return null
   const avgSys = Math.round(recent.reduce((s, m) => s + m.sys, 0) / recent.length)
   const avgDia = Math.round(recent.reduce((s, m) => s + m.dia, 0) / recent.length)
-  return { sys: avgSys, dia: avgDia }
+  return { sys: avgSys, dia: avgDia, count: recent.length }
 }
 
 export default function RegisterView({ onDataChange, refreshKey }) {
@@ -36,7 +36,7 @@ export default function RegisterView({ onDataChange, refreshKey }) {
     const all = await getAllMeasurements()
     const sorted = all.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
     setMeasurements(sorted)
-    const avg = get14DayAvg(sorted)
+    const avg = getPeriodAvg(sorted, 14)
     if (avg) {
       setDefaultAvg(avg)
       setSys(avg.sys)
@@ -81,6 +81,8 @@ export default function RegisterView({ onDataChange, refreshKey }) {
   const trend = getTrendFeedback(allMs)
   const today = getTodaySummary(allMs)
   const todayMs = measurements.filter(m => m.date === new Date().toISOString().slice(0, 10))
+  const avg14 = getPeriodAvg(measurements, 14)
+  const avg30 = getPeriodAvg(measurements, 30)
 
   const category = classifyBP(Number(sys), Number(dia))
   const bpColor = getBPColor(Number(sys), Number(dia))
@@ -135,7 +137,7 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             </div>
 
             {defaultAvg && (
-              <p className="slider-hint">Startläge: ditt 14-dagarssnitt {defaultAvg.sys}/{defaultAvg.dia}. Dra till uppmätt värde.</p>
+              <p className="slider-hint">Startläge: 14-dagarssnitt {defaultAvg.sys}/{defaultAvg.dia}. Dra till uppmätt värde.</p>
             )}
           </div>
 
@@ -223,26 +225,84 @@ export default function RegisterView({ onDataChange, refreshKey }) {
         </div>
       )}
 
-      {/* Trend */}
-      {trend && (
-        <div className="card trend-card">
-          <h3 className="card-title">Trend (14 dagar)</h3>
-          <div className="trend-main" style={{ color: trend.category.color }}>
-            {trend.recentAvgSys}/{trend.recentAvgDia} mmHg
-            <span className="trend-label" style={{ background: trend.category.bg, color: trend.category.color }}>
-              {trend.category.label}
-            </span>
-          </div>
-          {trend.trend && (
-            <p className="trend-diff">
+      {/* Averages summary card */}
+      {(today || avg14 || avg30) && (
+        <div className="card avg-summary-card">
+          <h3 className="card-title">Medelvärden</h3>
+
+          {/* Today – largest */}
+          {today ? (
+            <div className="avg-row avg-row-today">
+              <div className="avg-period">Idag</div>
+              <div className="avg-value" style={{ color: classifyBP(today.avgSys, today.avgDia).color }}>
+                {today.avgSys}/{today.avgDia}
+                <span className="avg-unit"> mmHg</span>
+              </div>
+              <span className="avg-cat" style={{
+                background: classifyBP(today.avgSys, today.avgDia).bg,
+                color: classifyBP(today.avgSys, today.avgDia).color
+              }}>
+                {classifyBP(today.avgSys, today.avgDia).label}
+              </span>
+              <span className="avg-count">{today.count} mätning{today.count !== 1 ? 'ar' : ''}</span>
+            </div>
+          ) : (
+            <div className="avg-row avg-row-today avg-row-empty">
+              <div className="avg-period">Idag</div>
+              <div className="avg-value avg-no-data">–</div>
+              <span className="avg-count">Ingen mätning idag</span>
+            </div>
+          )}
+
+          {/* 14-day */}
+          {avg14 && (
+            <div className="avg-row avg-row-14">
+              <div className="avg-period">14 dagar</div>
+              <div className="avg-value" style={{ color: classifyBP(avg14.sys, avg14.dia).color }}>
+                {avg14.sys}/{avg14.dia}
+                <span className="avg-unit"> mmHg</span>
+              </div>
+              <span className="avg-cat" style={{
+                background: classifyBP(avg14.sys, avg14.dia).bg,
+                color: classifyBP(avg14.sys, avg14.dia).color
+              }}>
+                {classifyBP(avg14.sys, avg14.dia).label}
+              </span>
+              <span className="avg-count">{avg14.count} mätningar</span>
+            </div>
+          )}
+
+          {/* 30-day */}
+          {avg30 && (
+            <div className="avg-row avg-row-30">
+              <div className="avg-period">30 dagar</div>
+              <div className="avg-value" style={{ color: classifyBP(avg30.sys, avg30.dia).color }}>
+                {avg30.sys}/{avg30.dia}
+                <span className="avg-unit"> mmHg</span>
+              </div>
+              <span className="avg-cat" style={{
+                background: classifyBP(avg30.sys, avg30.dia).bg,
+                color: classifyBP(avg30.sys, avg30.dia).color
+              }}>
+                {classifyBP(avg30.sys, avg30.dia).label}
+              </span>
+              <span className="avg-count">{avg30.count} mätningar</span>
+            </div>
+          )}
+
+          {/* Trend direction */}
+          {trend?.trend && (
+            <p className="trend-diff" style={{ marginTop: 10 }}>
               {trend.trend.sysDiff < 0
-                ? `↓ ${Math.abs(trend.trend.sysDiff)} mmHg lägre än förra perioden`
+                ? `↓ ${Math.abs(trend.trend.sysDiff)} mmHg lägre än föregående 14-dagarsperiod`
                 : trend.trend.sysDiff > 0
-                ? `↑ ${trend.trend.sysDiff} mmHg högre än förra perioden`
-                : 'Oförändrat jämfört med förra perioden'}
+                ? `↑ ${trend.trend.sysDiff} mmHg högre än föregående 14-dagarsperiod`
+                : 'Oförändrat jämfört med föregående period'}
             </p>
           )}
-          {trend.lastTenCount >= 3 && (
+
+          {/* Target hit stats */}
+          {trend?.lastTenCount >= 3 && (
             <div className="trend-stats">
               <div className="trend-stat">
                 <span className="trend-stat-n" style={{ color: '#16a34a' }}>{trend.underTarget130}</span>
@@ -258,7 +318,6 @@ export default function RegisterView({ onDataChange, refreshKey }) {
               </div>
             </div>
           )}
-          <p className="trend-count">Baserat på {trend.recentCount} mätning{trend.recentCount !== 1 ? 'ar' : ''} de senaste 14 dagarna</p>
         </div>
       )}
 

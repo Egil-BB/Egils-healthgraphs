@@ -2251,3 +2251,25 @@ button { touch-action: manipulation; }
 .pain-hist-nrs { font-size: 17px; font-weight: 800; }
 .pain-hist-peg { font-size: 15px; font-weight: 600; }
 .pain-history-locs, .pain-history-quality, .pain-history-meds, .pain-history-notes { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ─── BP Averages summary card ───────────────────────────────────────────── */
+.avg-summary-card { padding-bottom: 14px; }
+.avg-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+.avg-row:last-of-type { border-bottom: none; }
+.avg-period { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; min-width: 60px; }
+.avg-value { font-weight: 800; line-height: 1.1; }
+.avg-unit { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.avg-cat { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.avg-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.avg-no-data { color: var(--text-muted) !important; font-weight: 400 !important; }
+.avg-row-empty { opacity: 0.6; }
+
+/* Today row: larger */
+.avg-row-today .avg-value { font-size: 28px; }
+.avg-row-today .avg-unit { font-size: 13px; }
+.avg-row-today .avg-period { font-size: 13px; min-width: 60px; }
+.avg-row-today .avg-cat { font-size: 13px; padding: 3px 10px; }
+.avg-row-today .avg-no-data { font-size: 24px; }
+
+/* 14 and 30 day rows: medium */
+.avg-row-14 .avg-value, .avg-row-30 .avg-value { font-size: 18px; }
