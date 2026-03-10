@@ -44,8 +44,7 @@ html, body, #root { height: 100%; }
   color: white;
   height: var(--header-h);
   flex-shrink: 0;
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 100;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
@@ -87,8 +86,10 @@ html, body, #root { height: 100%; }
 .app-main {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 8px;
+  min-height: 0; /* critical for flex children to scroll properly */
 }
 
 .view-content {
@@ -2162,7 +2163,7 @@ button { touch-action: manipulation; }
   display: flex; align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto;
 }
 .pain-wizard {
-  background: var(--surface); border-radius: 16px; padding: 20px;
+  background: #ffffff; border-radius: 16px; padding: 20px;
   width: 100%; max-width: 480px; position: relative;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18); margin-top: 20px;
 }
@@ -2180,7 +2181,7 @@ button { touch-action: manipulation; }
 .pain-skip { display: block; text-align: center; background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin-top: 8px; text-decoration: underline; }
 
 /* Sliders */
-.pain-slider-field { margin-bottom: 18px; }
+.pain-slider-field { margin-bottom: 18px; background: #ffffff; padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
 .pain-slider-label { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .pain-slider-value { font-size: 32px; font-weight: 900; text-align: center; line-height: 1.1; margin: 4px 0; transition: color 0.2s; }
 .pain-slider { width: 100%; height: 6px; cursor: pointer; accent-color: var(--slider-color, var(--primary)); }

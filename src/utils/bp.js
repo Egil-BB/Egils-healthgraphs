@@ -1,14 +1,14 @@
 // Blood pressure utility functions
 
 export const BP_CATEGORIES = [
-  { label: 'Mycket lågt',     maxSys: 90,       maxDia: 60,       color: '#7c3aed', bg: '#ede9fe', crisis: false, low: true },
-  { label: 'Lågt',            maxSys: 100,      maxDia: 65,       color: '#9333ea', bg: '#f3e8ff', crisis: false, low: true },
-  { label: 'Optimalt',        maxSys: 130,      maxDia: 80,       color: '#16a34a', bg: '#dcfce7', crisis: false },
-  { label: 'Bra',             maxSys: 135,      maxDia: 85,       color: '#65a30d', bg: '#ecfccb', crisis: false },
-  { label: 'Acceptabelt',     maxSys: 140,      maxDia: 90,       color: '#ca8a04', bg: '#fef9c3', crisis: false },
-  { label: 'Förhöjt',        maxSys: 160,      maxDia: 100,      color: '#ea580c', bg: '#ffedd5', crisis: false },
-  { label: 'Högt',            maxSys: 180,      maxDia: 110,      color: '#dc2626', bg: '#fee2e2', crisis: false },
-  { label: 'Hypertensiv kris', maxSys: Infinity, maxDia: Infinity, color: '#7f1d1d', bg: '#fca5a5', crisis: true }
+  { label: 'Mycket lågt',   maxSys: 90,       maxDia: 60,       color: '#7c3aed', bg: '#ede9fe', crisis: false, low: true },
+  { label: 'Lågt',          maxSys: 100,      maxDia: 65,       color: '#9333ea', bg: '#f3e8ff', crisis: false, low: true },
+  { label: 'Optimalt',      maxSys: 130,      maxDia: 80,       color: '#16a34a', bg: '#dcfce7', crisis: false },
+  { label: 'Acceptabelt',   maxSys: 136,      maxDia: 86,       color: '#65a30d', bg: '#ecfccb', crisis: false },
+  { label: 'Förhöjt',      maxSys: 140,      maxDia: 90,       color: '#ca8a04', bg: '#fef9c3', crisis: false },
+  { label: 'Högt',          maxSys: 160,      maxDia: 100,      color: '#ea580c', bg: '#ffedd5', crisis: false },
+  { label: 'Mycket högt',   maxSys: 180,      maxDia: 110,      color: '#dc2626', bg: '#fee2e2', crisis: false },
+  { label: 'Mycket högt!',  maxSys: Infinity, maxDia: Infinity, color: '#7f1d1d', bg: '#fca5a5', crisis: true }
 ]
 
 export function classifyBP(sys, dia) {
@@ -45,6 +45,19 @@ export const TIME_OF_DAY_LABELS = {
   night: 'Natt'
 }
 
+// Calculate reliability stars for a day's measurements
+// 1 star: 1+ measurements any time
+// 2 stars: at least 1 morning + 1 evening
+// 3 stars: 2+ morning + 2+ evening
+export function getReliabilityStars(ms) {
+  if (!ms || ms.length === 0) return 0
+  const morningMs = ms.filter(m => m.timeOfDay === 'morning')
+  const eveningMs = ms.filter(m => m.timeOfDay === 'evening')
+  if (morningMs.length >= 2 && eveningMs.length >= 2) return 3
+  if (morningMs.length >= 1 && eveningMs.length >= 1) return 2
+  return 1
+}
+
 // Group measurements by date and calculate daily averages
 export function getDailyAverages(measurements) {
   const byDate = {}
@@ -62,7 +75,8 @@ export function getDailyAverages(measurements) {
         : null
       const hasMorning = ms.some(m => m.timeOfDay === 'morning')
       const hasEvening = ms.some(m => m.timeOfDay === 'evening')
-      return { date, avgSys, avgDia, avgPulse, count: ms.length, hasMorning, hasEvening, reliable: hasMorning && hasEvening }
+      const stars = getReliabilityStars(ms)
+      return { date, avgSys, avgDia, avgPulse, count: ms.length, hasMorning, hasEvening, reliable: hasMorning && hasEvening, stars }
     })
 }
 
