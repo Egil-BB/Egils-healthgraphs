@@ -68,7 +68,7 @@ export default function App() {
       <header className="app-header">
         <div className="app-header-inner">
           <span className="app-logo">💓</span>
-          <h1 className="app-title">Egils Hälsografer</h1>
+          <h1 className="app-title">Hälsostödet</h1>
           <button
             className="settings-btn"
             onClick={() => setTab(tab === 'settings' ? 'register' : 'settings')}

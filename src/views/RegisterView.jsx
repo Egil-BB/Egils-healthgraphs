@@ -3,7 +3,7 @@ import { addMeasurement, getAllMeasurements, deleteMeasurement } from '../db/db'
 import {
   classifyBP, getBPColor, getBPBg, isCrisisBP,
   getTrendFeedback, getTodaySummary,
-  formatTimeSv, TIME_OF_DAY_LABELS, daysAgo
+  formatTimeSv, TIME_OF_DAY_LABELS, daysAgo, getReliabilityStars
 } from '../utils/bp'
 
 function getPeriodAvg(measurements, days) {
@@ -54,20 +54,26 @@ export default function RegisterView({ onDataChange, refreshKey }) {
     e.preventDefault()
     if (!sys || !dia || sys < 50 || sys > 300 || dia < 30 || dia > 200) return
     setSaving(true)
-    const customDateTime = useCustomTime ? `${customDate}T${customTime}:00` : undefined
-    await addMeasurement({
-      sys: Number(sys),
-      dia: Number(dia),
-      pulse: pulse ? parseInt(pulse) : null,
-      note: note.trim() || null,
-      customDateTime,
-    })
-    setPulse(''); setNote(''); setShowNote(false)
-    setUseCustomTime(false)
-    setSaving(false); setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-    await load()
-    onDataChange?.()
+    try {
+      const customDateTime = useCustomTime ? `${customDate}T${customTime}:00` : undefined
+      await addMeasurement({
+        sys: Number(sys),
+        dia: Number(dia),
+        pulse: pulse ? parseInt(pulse) : null,
+        note: note.trim() || null,
+        customDateTime,
+      })
+      setPulse(''); setNote(''); setShowNote(false)
+      setUseCustomTime(false)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      await load()
+      onDataChange?.()
+    } catch (err) {
+      alert('Fel vid sparning: ' + (err?.message || 'Okänt fel. Kontrollera att lagringsutrymme finns.'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id) {
@@ -147,11 +153,11 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             <span className="bp-preview-label" style={{ color: bpColor }}>{category.label}</span>
           </div>
 
-          {/* Crisis warning */}
+          {/* Very high BP warning */}
           {crisis && (
             <div className="crisis-warning">
               ⚠️ <strong>Mycket högt tryck – ta om mätningen!</strong>
-              <br/>Vila 5 minuter och mät igen. Om trycket kvarstår ≥180/110 mmHg — kontakta vården snarast.
+              <br/>Vila 5 minuter och mät igen. Om trycket kvarstår högt – kontakta din vårdgivare.
             </div>
           )}
 
@@ -301,23 +307,6 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             </p>
           )}
 
-          {/* Target hit stats */}
-          {trend?.lastTenCount >= 3 && (
-            <div className="trend-stats">
-              <div className="trend-stat">
-                <span className="trend-stat-n" style={{ color: '#16a34a' }}>{trend.underTarget130}</span>
-                <span>/10 under 130/80</span>
-              </div>
-              <div className="trend-stat">
-                <span className="trend-stat-n" style={{ color: '#65a30d' }}>{trend.underTarget135}</span>
-                <span>/10 under 135/85</span>
-              </div>
-              <div className="trend-stat">
-                <span className="trend-stat-n" style={{ color: '#ca8a04' }}>{trend.underTarget140}</span>
-                <span>/10 under 140/90</span>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -328,6 +317,17 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             Idag
             {today && today.count >= 2 && (
               <span className="card-title-sub"> – snitt {today.avgSys}/{today.avgDia}</span>
+            )}
+            {todayMs.length > 0 && (
+              <span style={{ marginLeft: 8, fontSize: 14 }} title={
+                getReliabilityStars(todayMs) === 3
+                  ? 'Utmärkt tillförlitlighet: 2+ mätningar morgon & kväll'
+                  : getReliabilityStars(todayMs) === 2
+                  ? 'God tillförlitlighet: mätning morgon & kväll'
+                  : 'Begränsad tillförlitlighet: mätning vid ett tillfälle'
+              }>
+                {'★'.repeat(getReliabilityStars(todayMs))}{'☆'.repeat(3 - getReliabilityStars(todayMs))}
+              </span>
             )}
           </h3>
           <div className="measurements-list">

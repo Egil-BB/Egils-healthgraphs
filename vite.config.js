@@ -8,9 +8,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Egils Hälsografer',
-        short_name: 'Hälsografer',
-        description: 'Blodtrycksuppföljning för patienter',
+        name: 'Hälsostödet',
+        short_name: 'Hälsostödet',
+        description: 'Hälsouppföljning för patienter',
         theme_color: '#1e40af',
         background_color: '#f1f5f9',
         display: 'standalone',
