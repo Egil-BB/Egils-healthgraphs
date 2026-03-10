@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { addGutEntry, getAllGutEntries, deleteGutEntry, getProfile, setProfile } from '../db/db'
+import { addGutEntry, getAllGutEntries, deleteGutEntry, getAllMedications } from '../db/db'
 import { formatDateSv } from '../utils/bp'
+import { getMedGraphTargets } from '../utils/medications'
 
-// Färger: typ 1-2 mörkbrunt (förstoppning), typ 3 brungrön, typ 4 grön (centrum),
-// typ 5 gulgrön (normalt), typ 6-7 gult (diarré)
 const BRISTOL_TYPES = [
   { type: 1, desc: 'Hårda klumpar, som nötter', color: '#3d1c00', normal: false },
   { type: 2, desc: 'Korvformad, klumpig', color: '#7a3a0a', normal: false },
@@ -14,8 +13,6 @@ const BRISTOL_TYPES = [
   { type: 7, desc: 'Helt flytande, ingen fast form', color: '#eab308', normal: false },
 ]
 
-const DEFAULT_LAXATIVES = ['Movicol', 'Cilaxoral', 'Resolor', 'Imodium', 'Vi-Siblin', 'Inolaxol']
-const LAX_MAX_DOSE = 10
 const GRADE_LABELS = ['Ingen', 'Mild', 'Måttlig', 'Svår']
 
 function GradeSelector({ label, value, onChange }) {
@@ -35,302 +32,58 @@ function GradeSelector({ label, value, onChange }) {
   )
 }
 
-function emptyForm() {
-  return {
-    date: new Date().toISOString().slice(0, 10),
-    bristolTypes: [],   // array of type numbers, one per bowel movement
-    pain: 0, bloating: 0, gas: 0,
-    laxatives: {},      // { Movicol: 2, ... }
+// ── Gut registration wizard ────────────────────────────────────────────────────
+
+function GutWizard({ onSave, onClose }) {
+  const [step, setStep] = useState(1)
+  const [form, setForm] = useState({
+    bristolType: null,
+    pain: 0,
+    bloating: 0,
+    gas: 0,
     notes: '',
-  }
-}
-
-export default function DiaryView({ onDataChange }) {
-  const [entries, setEntries] = useState([])
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(emptyForm())
-  const [showInfo, setShowInfo] = useState(false)
+  })
+  const today = new Date().toISOString().slice(0, 10)
+  const time = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
   const [showBristolImg, setShowBristolImg] = useState(false)
-  const [laxMeds, setLaxMeds] = useState(DEFAULT_LAXATIVES)
-  const [editingLax, setEditingLax] = useState(false)
-  const [newLaxName, setNewLaxName] = useState('')
 
-  const load = useCallback(async () => {
-    const all = await getAllGutEntries()
-    setEntries(all.sort((a, b) => b.date.localeCompare(a.date)))
-  }, [])
-
-  useEffect(() => {
-    getProfile('laxMeds').then(saved => {
-      if (saved && Array.isArray(saved) && saved.length > 0) setLaxMeds(saved)
+  async function handleSave() {
+    if (!form.bristolType) return
+    await addGutEntry({
+      date: today,
+      time,
+      bristolType: form.bristolType,
+      bristolTypes: [form.bristolType],
+      bowelCount: 1,
+      pain: form.pain,
+      bloating: form.bloating,
+      gas: form.gas,
+      notes: form.notes,
     })
-  }, [])
-
-  async function saveLaxMeds(next) {
-    setLaxMeds(next)
-    await setProfile('laxMeds', next)
-  }
-
-  function addLaxMed() {
-    const name = newLaxName.trim()
-    if (!name || laxMeds.includes(name)) return
-    saveLaxMeds([...laxMeds, name])
-    setNewLaxName('')
-  }
-
-  function removeLaxMed(name) {
-    saveLaxMeds(laxMeds.filter(m => m !== name))
-    setForm(f => {
-      const laxatives = { ...f.laxatives }
-      delete laxatives[name]
-      return { ...f, laxatives }
-    })
-  }
-
-  useEffect(() => { load() }, [load])
-
-  // Bristol: click = +1 of that type; minus button = -1
-  function addBristol(type) {
-    setForm(f => ({ ...f, bristolTypes: [...f.bristolTypes, type] }))
-  }
-  function removeBristol(type) {
-    setForm(f => {
-      const arr = [...f.bristolTypes]
-      const idx = arr.lastIndexOf(type)
-      if (idx > -1) arr.splice(idx, 1)
-      return { ...f, bristolTypes: arr }
-    })
-  }
-
-  function toggleLaxative(name) {
-    setForm(f => {
-      const cur = f.laxatives[name] || 0
-      const next = cur + 1 > LAX_MAX_DOSE ? 0 : cur + 1
-      const laxatives = { ...f.laxatives }
-      if (next === 0) delete laxatives[name]
-      else laxatives[name] = next
-      return { ...f, laxatives }
-    })
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (form.bristolTypes.length === 0) return
-    const totalBowelCount = form.bristolTypes.length
-    await addGutEntry({ ...form, bowelCount: totalBowelCount })
-    setForm(emptyForm())
-    setShowForm(false)
-    await load()
-    onDataChange?.()
-  }
-
-  async function handleDelete(id) {
-    if (!confirm('Ta bort anteckning?')) return
-    await deleteGutEntry(id)
-    await load()
-    onDataChange?.()
-  }
-
-  function bristolCountOf(bristolTypes, type) {
-    return (bristolTypes || []).filter(t => t === type).length
-  }
-
-  function bristolSummary(entry) {
-    // Support both old single bristolType and new bristolTypes array
-    if (entry.bristolTypes && entry.bristolTypes.length > 0) {
-      const counts = {}
-      for (const t of entry.bristolTypes) counts[t] = (counts[t] || 0) + 1
-      return Object.entries(counts)
-        .sort(([a], [b]) => Number(a) - Number(b))
-        .map(([t, c]) => c > 1 ? `Typ ${t} ×${c}` : `Typ ${t}`)
-        .join(', ')
-    }
-    if (entry.bristolType) return `Typ ${entry.bristolType}`
-    return '–'
-  }
-
-  function laxSummary(entry) {
-    if (entry.laxatives && typeof entry.laxatives === 'object') {
-      return Object.entries(entry.laxatives)
-        .filter(([, d]) => d > 0)
-        .map(([n, d]) => d > 1 ? `${n} ×${d}` : n)
-        .join(', ')
-    }
-    return entry.laxative || null
+    onSave()
   }
 
   return (
-    <div className="view-content">
-      <div className="card">
-        <div className="card-header-row">
-          <h2 className="card-title">📔 Dagbok – Tarm</h2>
-          {!showForm && (
-            <button className="btn-add" onClick={() => setShowForm(true)}>+ Registrera</button>
-          )}
+    <div className="pain-wizard-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="pain-wizard">
+        <div className="pain-wizard-progress">
+          {[1, 2].map(s => (
+            <div key={s} className={`pain-prog-dot ${step >= s ? 'active' : ''}`} />
+          ))}
         </div>
-        <p className="card-desc">Följ avföring, smärta, gasbesvär och laxativbruk.</p>
-      </div>
+        <button className="pain-wizard-close" onClick={onClose}>✕</button>
 
-      {/* Info card */}
-      <div className="card">
-        <button className="info-toggle-btn" onClick={() => setShowInfo(v => !v)}>
-          ℹ Förstoppning – information {showInfo ? '▲' : '▼'}
-        </button>
-        {showInfo && (
-          <div className="info-expand">
-            <p className="card-desc"><strong>Normal avföringsfrekvens</strong> hos barn: 3/dag – 3/vecka. Hos vuxna: 3/dag – 3/vecka.</p>
-            <p className="card-desc">Förstoppning = ≤2 tömningar/vecka, hård konsistens (Bristol 1–2) eller smärta vid tömning.</p>
-            <p className="card-desc"><strong>Åtgärder:</strong> Rikligt vätskeintag, fiberrik kost, regelbunden toalett-rutin, fysisk aktivitet.</p>
-            <p className="card-desc"><strong>Röda flaggor</strong> (kontakta läkare): blod i avföring, viktnedgång, nattliga symtom.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Form */}
-      {showForm && (
-        <div className="card">
-          <h3 className="card-title">Ny anteckning</h3>
-          <form onSubmit={handleSubmit} className="med-form">
-            <div className="form-group">
-              <label>Datum</label>
-              <input type="date" value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="form-input" />
-            </div>
-
-            {/* Bristol multi-select */}
-            <div className="form-group">
-              <div className="bristol-label-row">
-                <label>Avföringens konsistens – klicka för varje tömning *</label>
-                <button type="button" className="bristol-img-btn" onClick={() => setShowBristolImg(true)}>
-                  🖼 Visa bild
-                </button>
-              </div>
-              <p className="form-hint">Klicka en typ per tömning. Typ 3–5 = normalt. Typ 1–2 = förstoppning. Typ 6–7 = diarré.</p>
-              <div className="bristol-grid">
-                {BRISTOL_TYPES.map(b => {
-                  const count = bristolCountOf(form.bristolTypes, b.type)
-                  return (
-                    <div key={b.type} className="bristol-card-row">
-                      <button
-                        type="button"
-                        className={`bristol-card ${count > 0 ? 'bristol-card-active' : ''} ${b.normal ? 'bristol-card-normal' : ''}`}
-                        style={count > 0 ? { borderColor: b.color, background: b.color + '18' } : {}}
-                        onClick={() => addBristol(b.type)}
-                      >
-                        <span className="bristol-num" style={{ color: b.color }}>{b.type}</span>
-                        <span className="bristol-desc">{b.desc}</span>
-                        {b.normal && <span className="bristol-normal-dot" />}
-                        {count > 0 && <span className="bristol-badge" style={{ background: b.color }}>×{count}</span>}
-                      </button>
-                      {count > 0 && (
-                        <button type="button" className="bristol-minus" onClick={() => removeBristol(b.type)}>−</button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              {form.bristolTypes.length === 0 && (
-                <p className="form-hint" style={{ color: '#dc2626' }}>Välj minst en typ.</p>
-              )}
-              {form.bristolTypes.length > 0 && (
-                <p className="form-hint" style={{ color: '#16a34a' }}>
-                  {form.bristolTypes.length} tömning{form.bristolTypes.length > 1 ? 'ar' : ''} valda
-                </p>
-              )}
-            </div>
-
-            <GradeSelector label="Buksmärta" value={form.pain} onChange={v => setForm(f => ({ ...f, pain: v }))} />
-            <GradeSelector label="Uppblåsthet" value={form.bloating} onChange={v => setForm(f => ({ ...f, bloating: v }))} />
-            <GradeSelector label="Gasbesvär" value={form.gas} onChange={v => setForm(f => ({ ...f, gas: v }))} />
-
-            {/* Laxatives */}
-            <div className="form-group">
-              <div className="lax-manage-row">
-                <label>Laxativ/tarmregulerare – klicka för antal doser</label>
-                <button type="button" className="lax-manage-btn" onClick={() => setEditingLax(v => !v)}>
-                  {editingLax ? 'Klar' : 'Ändra lista'}
-                </button>
-              </div>
-              {editingLax && (
-                <div className="lax-edit-form">
-                  <p>Dina läkemedel:</p>
-                  <div className="lax-current">
-                    {laxMeds.map(name => (
-                      <span key={name} className="lax-tag">
-                        {name}
-                        <button type="button" className="lax-tag-remove" onClick={() => removeLaxMed(name)}>×</button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="lax-add-row">
-                    <input
-                      type="text"
-                      value={newLaxName}
-                      onChange={e => setNewLaxName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLaxMed())}
-                      placeholder="Lägg till läkemedel..."
-                      className="form-input lax-add-input"
-                    />
-                    <button type="button" className="btn-secondary" onClick={addLaxMed}>Lägg till</button>
-                  </div>
-                </div>
-              )}
-              <div className="lax-grid">
-                {laxMeds.map(name => {
-                  const count = form.laxatives[name] || 0
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      className={`lax-btn ${count > 0 ? 'lax-btn-active' : ''}`}
-                      onClick={() => toggleLaxative(name)}
-                    >
-                      {name}
-                      {count > 0 && <span className="lax-count">×{count}</span>}
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="form-hint">Klicka för att lägga till dos. Klicka igen för +1 dos (max {LAX_MAX_DOSE}). Klicka till 0 för att ta bort.</p>
-            </div>
-
-            <div className="form-group">
-              <label>Anteckningar</label>
-              <input type="text" value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Valfri kommentar..." className="form-input" />
-            </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={form.bristolTypes.length === 0}>
-                Spara
-              </button>
-              <button type="button" className="btn-secondary"
-                onClick={() => { setShowForm(false); setForm(emptyForm()) }}>
-                Avbryt
+        {step === 1 && (
+          <div className="pain-wizard-step">
+            <h3 className="pain-step-title">Steg 1 av 2 – Tarmtömning</h3>
+            <div className="bristol-label-row">
+              <label>Välj Bristol-typ</label>
+              <button type="button" className="bristol-img-btn" onClick={() => setShowBristolImg(v => !v)}>
+                🖼 {showBristolImg ? 'Dölj' : 'Visa'} bild
               </button>
             </div>
-          </form>
-        </div>
-      )}
-
-      {/* Bristol chart image modal */}
-      {showBristolImg && (
-        <div className="bristol-modal-overlay" onClick={() => setShowBristolImg(false)}>
-          <div className="bristol-modal" onClick={e => e.stopPropagation()}>
-            <div className="bristol-modal-header">
-              <h3>Bristolskalan</h3>
-              <button className="bristol-modal-close" onClick={() => setShowBristolImg(false)}>×</button>
-            </div>
-            <img
-              src="/bristol-stool-chart.png"
-              alt="Bristolskalan – avföringens konsistens typ 1–7"
-              className="bristol-modal-img"
-              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block' }}
-            />
-            <div className="bristol-modal-fallback" style={{ display: 'none' }}>
-              <div className="bristol-scale-list">
+            {showBristolImg && (
+              <div className="bristol-scale-list" style={{ marginBottom: 8 }}>
                 {BRISTOL_TYPES.map(b => (
                   <div key={b.type} className="bristol-scale-row">
                     <span className="bristol-scale-num" style={{ color: b.color }}>Typ {b.type}</span>
@@ -340,40 +93,253 @@ export default function DiaryView({ onDataChange }) {
                   </div>
                 ))}
               </div>
+            )}
+            <div className="bristol-grid">
+              {BRISTOL_TYPES.map(b => (
+                <button
+                  key={b.type}
+                  type="button"
+                  className={`bristol-card ${form.bristolType === b.type ? 'bristol-card-active' : ''} ${b.normal ? 'bristol-card-normal' : ''}`}
+                  style={form.bristolType === b.type ? { borderColor: b.color, background: b.color + '18' } : {}}
+                  onClick={() => setForm(f => ({ ...f, bristolType: b.type }))}
+                >
+                  <span className="bristol-num" style={{ color: b.color }}>{b.type}</span>
+                  <span className="bristol-desc">{b.desc}</span>
+                  {b.normal && <span className="bristol-normal-dot" />}
+                </button>
+              ))}
             </div>
-            <p className="bristol-modal-note">Typ 3–5 är normalt. Klicka utanför för att stänga.</p>
+            {!form.bristolType && (
+              <p style={{ color: '#dc2626', fontSize: 13, marginTop: 8 }}>Välj en typ för att fortsätta.</p>
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* History */}
+        {step === 2 && (
+          <div className="pain-wizard-step">
+            <h3 className="pain-step-title">Steg 2 av 2 – Symtom (valfritt)</h3>
+            <GradeSelector label="Buksmärta" value={form.pain} onChange={v => setForm(f => ({ ...f, pain: v }))} />
+            <GradeSelector label="Uppblåsthet" value={form.bloating} onChange={v => setForm(f => ({ ...f, bloating: v }))} />
+            <GradeSelector label="Gasbesvär" value={form.gas} onChange={v => setForm(f => ({ ...f, gas: v }))} />
+            <div className="form-group" style={{ marginTop: 8 }}>
+              <label>Anteckning (valfritt)</label>
+              <input type="text" value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Fritext..." className="form-input" />
+            </div>
+          </div>
+        )}
+
+        <div className="pain-wizard-nav">
+          {step > 1 && (
+            <button type="button" className="btn-secondary" onClick={() => setStep(s => s - 1)}>← Tillbaka</button>
+          )}
+          {step === 1 && (
+            <button type="button" className="btn-primary" disabled={!form.bristolType} onClick={() => setStep(2)}>Nästa →</button>
+          )}
+          {step === 2 && (
+            <button type="button" className="btn-primary" onClick={handleSave}>Spara</button>
+          )}
+        </div>
+        {step === 2 && (
+          <button type="button" className="pain-skip" onClick={handleSave}>Hoppa över &amp; spara</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Gut medication modal ──────────────────────────────────────────────────────
+
+function GutMedModal({ gutMeds, onSave, onClose }) {
+  const [medCounts, setMedCounts] = useState({})
+  const today = new Date().toISOString().slice(0, 10)
+  const time = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+  const hasAny = Object.values(medCounts).some(v => v > 0)
+
+  async function handleSave() {
+    await addGutEntry({
+      date: today,
+      time,
+      bristolType: null,
+      bristolTypes: [],
+      bowelCount: 0,
+      pain: 0,
+      bloating: 0,
+      gas: 0,
+      medications: { ...medCounts },
+      notes: '',
+    })
+    onSave()
+  }
+
+  const increment = id => setMedCounts(m => ({ ...m, [id]: (m[id] || 0) + 1 }))
+  const decrement = id => setMedCounts(m => ({ ...m, [id]: Math.max(0, (m[id] || 0) - 1) }))
+
+  return (
+    <div className="pain-wizard-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="pain-wizard">
+        <button className="pain-wizard-close" onClick={onClose}>✕</button>
+        <h3 className="pain-step-title">💊 Tarmmedicin tagen</h3>
+        {gutMeds.length === 0 ? (
+          <p style={{ color: '#64748b', fontSize: 14, padding: '8px 0' }}>
+            Inga tarmmediciner registrerade. Lägg till dem under Mediciner.
+          </p>
+        ) : (
+          <div className="pain-meds">
+            {gutMeds.map(med => (
+              <div key={med.id} className="pain-med-row">
+                <span className="pain-med-label">{med.name}{med.dose ? ` ${med.dose}` : ''}</span>
+                <div className="pain-med-controls">
+                  <button type="button" onClick={() => decrement(med.id)} className="pain-med-btn">−</button>
+                  <span className="pain-med-count">{medCounts[med.id] || 0}</span>
+                  <button type="button" onClick={() => increment(med.id)} className="pain-med-btn">+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="pain-wizard-nav">
+          <button type="button" className="btn-secondary" onClick={onClose}>Avbryt</button>
+          <button type="button" className="btn-primary" disabled={!hasAny || gutMeds.length === 0} onClick={handleSave}>Spara</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main view ─────────────────────────────────────────────────────────────────
+
+export default function DiaryView({ onDataChange }) {
+  const [entries, setEntries] = useState([])
+  const [gutMeds, setGutMeds] = useState([])
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [medModalOpen, setMedModalOpen] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+
+  const load = useCallback(async () => {
+    const [all, allMeds] = await Promise.all([getAllGutEntries(), getAllMedications()])
+    setEntries(all.sort((a, b) => {
+      const dc = b.date.localeCompare(a.date)
+      if (dc !== 0) return dc
+      return (b.time || '').localeCompare(a.time || '')
+    }))
+    // Filter registered medications that target 'gut'
+    const filtered = allMeds.filter(m => getMedGraphTargets(m.name).includes('gut'))
+    setGutMeds(filtered)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleDelete(id) {
+    if (!confirm('Ta bort anteckning?')) return
+    await deleteGutEntry(id)
+    await load()
+    onDataChange?.()
+  }
+
+  function handleSaved() {
+    setWizardOpen(false)
+    load()
+    onDataChange?.()
+  }
+
+  function bristolSummary(entry) {
+    if (entry.bristolTypes && entry.bristolTypes.length > 0) {
+      const counts = {}
+      for (const t of entry.bristolTypes) counts[t] = (counts[t] || 0) + 1
+      return Object.entries(counts)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([t, c]) => c > 1 ? `Typ ${t} ×${c}` : `Typ ${t}`)
+        .join(', ')
+    }
+    if (entry.bristolType) return `Typ ${entry.bristolType}`
+    return null
+  }
+
+  function medSummary(entry) {
+    if (entry.medications && typeof entry.medications === 'object') {
+      return Object.entries(entry.medications)
+        .filter(([, d]) => d > 0)
+        .map(([id, d]) => {
+          const med = gutMeds.find(m => String(m.id) === String(id))
+          const name = med ? med.name : id
+          return d > 1 ? `${name} ×${d}` : name
+        })
+        .join(', ')
+    }
+    return null
+  }
+
+  const isFlush = e => e.bristolType || (e.bristolTypes && e.bristolTypes.length > 0)
+  const isMedEntry = e => e.medications && Object.values(e.medications).some(v => v > 0)
+
+  return (
+    <div className="view-content">
+      <div className="card">
+        <div className="card-header-row">
+          <h2 className="card-title">📔 Dagbok – Tarm</h2>
+        </div>
+        <p className="card-desc">Registrera varje tömning och tagen tarmmedicin separat.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <button className="btn-primary pain-add-btn" onClick={() => setWizardOpen(true)}>
+            + Registrera tömning
+          </button>
+          <button className="btn-secondary" onClick={() => setMedModalOpen(true)}>
+            💊 Tarmmedicin
+          </button>
+        </div>
+      </div>
+
+      {/* Info card */}
+      <div className="card">
+        <button className="info-toggle-btn" onClick={() => setShowInfo(v => !v)}>
+          ℹ Förstoppning – information {showInfo ? '▲' : '▼'}
+        </button>
+        {showInfo && (
+          <div className="info-expand">
+            <p className="card-desc"><strong>Normal avföringsfrekvens</strong> hos vuxna: 3/dag – 3/vecka.</p>
+            <p className="card-desc">Förstoppning = ≤2 tömningar/vecka, hård konsistens (Bristol 1–2) eller smärta vid tömning.</p>
+            <p className="card-desc"><strong>Åtgärder:</strong> Rikligt vätskeintag, fiberrik kost, regelbunden toalett-rutin, fysisk aktivitet.</p>
+            <p className="card-desc"><strong>Röda flaggor</strong> (kontakta läkare): blod i avföring, viktnedgång, nattliga symtom.</p>
+          </div>
+        )}
+      </div>
+
       {entries.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📔</div>
-          <p>Inga anteckningar ännu.<br />Registrera dagens avföring ovan.</p>
+          <p>Inga anteckningar ännu.<br />Registrera en tömning ovan.</p>
         </div>
       ) : (
         <div className="card">
           <h3 className="card-title">Historik</h3>
           <div className="gut-list">
             {entries.map(e => {
-              const lax = laxSummary(e)
               const summary = bristolSummary(e)
-              const bowelN = e.bowelCount || (e.bristolTypes?.length) || 1
+              const meds = medSummary(e)
+              const bType = e.bristolType || (e.bristolTypes?.[0])
+              const bColor = bType ? (BRISTOL_TYPES.find(b => b.type === bType)?.color || '#64748b') : null
               return (
                 <div key={e.id} className="gut-item">
                   <div className="gut-item-header">
-                    <span className="gut-date">{formatDateSv(e.date)}</span>
+                    <span className="gut-date">
+                      {formatDateSv(e.date)}{e.time ? ` ${e.time}` : ''}
+                    </span>
                     <button className="btn-delete" onClick={() => handleDelete(e.id)}>×</button>
                   </div>
                   <div className="gut-item-body">
-                    <span className="gut-bristol">{summary}</span>
+                    {summary ? (
+                      <span className="gut-bristol" style={{ color: bColor || undefined }}>{summary}</span>
+                    ) : (
+                      <span className="gut-bristol" style={{ color: '#64748b' }}>💊 Medicinregistrering</span>
+                    )}
                     <div className="gut-meta-row">
-                      <span className="gut-chip">💩 {bowelN} tömn.</span>
+                      {isFlush(e) && <span className="gut-chip">💩 1 tömn.</span>}
                       {e.pain > 0 && <span className="gut-chip">Smärta: {GRADE_LABELS[e.pain]}</span>}
                       {e.bloating > 0 && <span className="gut-chip">Uppblåst: {GRADE_LABELS[e.bloating]}</span>}
                       {e.gas > 0 && <span className="gut-chip">Gas: {GRADE_LABELS[e.gas]}</span>}
-                      {lax && <span className="gut-chip gut-chip-lax">💊 {lax}</span>}
+                      {meds && <span className="gut-chip gut-chip-lax">💊 {meds}</span>}
                     </div>
                     {(e.notes || e.note) && <span className="gut-notes">📝 {e.notes || e.note}</span>}
                   </div>
@@ -382,6 +348,17 @@ export default function DiaryView({ onDataChange }) {
             })}
           </div>
         </div>
+      )}
+
+      {wizardOpen && (
+        <GutWizard onSave={handleSaved} onClose={() => setWizardOpen(false)} />
+      )}
+      {medModalOpen && (
+        <GutMedModal
+          gutMeds={gutMeds}
+          onSave={() => { setMedModalOpen(false); load(); onDataChange?.() }}
+          onClose={() => setMedModalOpen(false)}
+        />
       )}
     </div>
   )
