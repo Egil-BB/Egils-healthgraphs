@@ -155,6 +155,80 @@ export const COMMON_MEDICATIONS = [
       { name: 'Liraglutid (Saxenda)', strengths: ['0,6 mg', '1,2 mg', '1,8 mg', '2,4 mg', '3 mg'], fass: 'liraglutid saxenda' },
     ]
   },
+  {
+    class: 'Paracetamol',
+    graphTargets: ['pain'],
+    drugs: [
+      { name: 'Alvedon', strengths: ['500 mg', '1 g'], fass: 'alvedon' },
+      { name: 'Panodil', strengths: ['500 mg', '1 g'], fass: 'panodil' },
+      { name: 'Paracetamol', strengths: ['500 mg', '1 g'], fass: 'paracetamol' },
+    ]
+  },
+  {
+    class: 'NSAID (smärtstillande)',
+    graphTargets: ['pain'],
+    drugs: [
+      { name: 'Ipren (ibuprofen)', strengths: ['200 mg', '400 mg', '600 mg', '800 mg'], fass: 'ibuprofen' },
+      { name: 'Ibuprofen', strengths: ['200 mg', '400 mg', '600 mg', '800 mg'], fass: 'ibuprofen' },
+      { name: 'Pronaxen (naproxen)', strengths: ['250 mg', '500 mg', '750 mg depot'], fass: 'naproxen' },
+      { name: 'Naproxen', strengths: ['250 mg', '500 mg', '750 mg depot'], fass: 'naproxen' },
+      { name: 'Voltaren (diklofenak)', strengths: ['25 mg', '50 mg', '75 mg depot', '100 mg depot'], fass: 'diklofenak' },
+      { name: 'Diklofenak', strengths: ['25 mg', '50 mg', '75 mg depot', '100 mg depot'], fass: 'diklofenak' },
+    ]
+  },
+  {
+    class: 'Opioider',
+    graphTargets: ['pain'],
+    drugs: [
+      { name: 'Morfin (kortverkande)', strengths: ['5 mg', '10 mg', '20 mg'], fass: 'morfin' },
+      { name: 'Dolcontin (morfin depot)', strengths: ['10 mg', '30 mg', '60 mg', '100 mg'], fass: 'dolcontin' },
+      { name: 'Oxynorm (oxikodon)', strengths: ['5 mg', '10 mg', '20 mg'], fass: 'oxikodon' },
+      { name: 'OxyContin (oxikodon depot)', strengths: ['5 mg', '10 mg', '20 mg', '40 mg', '80 mg'], fass: 'oxycontin' },
+    ]
+  },
+  {
+    class: 'Laxerande',
+    graphTargets: ['gut'],
+    drugs: [
+      { name: 'Movicol (makrogol)', strengths: ['13,7 g påse'], fass: 'movicol' },
+      { name: 'Laxido (makrogol)', strengths: ['13,7 g påse'], fass: 'laxido' },
+      { name: 'Duphalac (laktulos)', strengths: ['670 mg/ml lösning'], fass: 'duphalac' },
+      { name: 'Laxoberal (natriumpikosulfat)', strengths: ['5 mg tablett', '7,5 mg/ml droppar'], fass: 'laxoberal' },
+      { name: 'Dulcolax (bisakodyl)', strengths: ['5 mg tablett', '10 mg suppositorium'], fass: 'dulcolax' },
+    ]
+  },
+  {
+    class: 'Bulkmedel / reglerande',
+    graphTargets: ['gut'],
+    drugs: [
+      { name: 'Inolaxol (sterkuliagummi)', strengths: ['granulat'], fass: 'inolaxol' },
+      { name: 'Vi-Siblin (psylliumfröskal)', strengths: ['3,5 g påse'], fass: 'vi-siblin' },
+    ]
+  },
+  {
+    class: 'Antidiarré',
+    graphTargets: ['gut'],
+    drugs: [
+      { name: 'Imodium (loperamid)', strengths: ['2 mg'], fass: 'imodium' },
+      { name: 'Loperamid', strengths: ['2 mg'], fass: 'loperamid' },
+    ]
+  },
+  {
+    class: 'Tarmspasm',
+    graphTargets: ['gut'],
+    drugs: [
+      { name: 'Buscopan (butylskopolamin)', strengths: ['10 mg'], fass: 'buscopan' },
+    ]
+  },
+  {
+    class: 'Reflux / dyspepsi',
+    graphTargets: ['gut'],
+    drugs: [
+      { name: 'Omeprazol', strengths: ['10 mg', '20 mg', '40 mg'], fass: 'omeprazol' },
+      { name: 'Pantoprazol', strengths: ['20 mg', '40 mg'], fass: 'pantoprazol' },
+      { name: 'Gaviscon (alginsyra)', strengths: ['oral suspension', 'tuggtablett'], fass: 'gaviscon' },
+    ]
+  },
 ]
 
 export function fassUrl(query) {

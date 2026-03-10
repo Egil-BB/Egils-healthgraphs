@@ -113,7 +113,7 @@ function detectClinicalFlags({ labs, avgSys, avgDia, waist, sex, bmi }) {
       title: 'Möjligt metabolt syndrom',
       details: metSyndDetails,
       advice: 'Metabolt syndrom ökar risken för hjärt-kärlsjukdom och typ 2-diabetes avsevärt. Livsstilsbehandling (ökad motion, minskat socker/kolhydrater, viktnedgång) är förstahandsval. Diskutera med din läkare.',
-      link: 'https://www.1177.se'
+      link: null
     })
   }
 
@@ -409,9 +409,11 @@ export default function ScoreView({ refreshKey }) {
                 </ul>
               )}
               <p className="clin-flag-advice">{f.advice}</p>
-              <a href={f.link} target="_blank" rel="noopener noreferrer" className="clin-flag-link">
-                Mer på 1177 ↗
-              </a>
+              {f.link && (
+                <a href={f.link} target="_blank" rel="noopener noreferrer" className="clin-flag-link">
+                  Mer på 1177 ↗
+                </a>
+              )}
             </div>
           ))}
         </div>
@@ -495,43 +497,49 @@ export default function ScoreView({ refreshKey }) {
             </div>
             <div className="score-nonhdl">
               Non-HDL: <strong>{autoResult.nonHdl} mmol/L</strong>
-              {!autoParams?.hdl && (
+              {!autoParams?.hdl && !autoParams?.nonHdlDirect && (
                 <span className="form-hint"> (uppskattat – fråga din läkare om ditt faktiska non-HDL!)</span>
               )}
             </div>
           </div>
 
-          {autoScenarios && autoScenarios.improvements.length > 0 && (
-            <div className="card">
-              <h3 className="card-title">Förväntad riskminskning</h3>
-              <p className="card-desc" style={{ marginBottom: 10, fontSize: 13 }}>
-                Visar hur mycket din 10-årsrisk kan sänkas om du når blodtrycksmålet (&lt;130 mmHg) och/eller förbättrar blodfetterna.
-              </p>
-              {autoScenarios.current.sbp < 130 && (
-                <p className="card-desc" style={{ fontSize: 12, marginBottom: 8, color: '#16a34a' }}>
-                  ✓ Blodtryck redan under mål (&lt;130 mmHg).
+          {autoParams && (() => {
+            const nonHdlNow = autoResult.nonHdl
+            const sbpNow = autoParams.sbp
+            const alreadyOptimal = nonHdlNow < 3 && sbpNow < 130
+            if (alreadyOptimal) return (
+              <div className="card">
+                <p style={{ color: '#16a34a', fontWeight: 600, fontSize: 14, margin: 0 }}>
+                  ✓ Blodtryck och non-HDL är redan inom optimala mål (&lt;130 mmHg, &lt;3 mmol/L).
                 </p>
-              )}
-              <div className="scenarios">
-                {autoScenarios.improvements.map((s, i) => {
-                  const reduction = (parseFloat(autoScenarios.current.riskPercent) - parseFloat(s.riskPercent)).toFixed(1)
-                  return (
-                    <div
-                      key={i}
-                      className={`scenario-item ${s.combined ? 'scenario-combined' : ''}`}
-                      style={{ borderColor: s.category.color }}
-                    >
-                      <div className="scenario-label">{s.label}</div>
-                      <div className="scenario-sbp">{s.sbp} mmHg · non-HDL {s.nonHdl}</div>
-                      <div className="scenario-risk" style={{ color: s.category.color }}>{s.riskPercent}%</div>
-                      <div className="scenario-cat" style={{ color: s.category.color }}>{s.category.label}</div>
-                      <div className="scenario-diff" style={{ color: '#16a34a' }}>−{reduction}% risk</div>
-                    </div>
-                  )
-                })}
               </div>
-            </div>
-          )}
+            )
+            const targetNonHdl = Math.max(0.5, Math.min(2.9, nonHdlNow))
+            const targetSbp = Math.min(129, sbpNow)
+            const combined = calculateScore2({ ...autoParams, sbp: targetSbp, nonHdlDirect: targetNonHdl })
+            const reduction = (parseFloat(autoResult.riskPercent) - parseFloat(combined.riskPercent)).toFixed(1)
+            const parts = []
+            if (sbpNow >= 130) parts.push(`BT ${targetSbp} mmHg`)
+            if (nonHdlNow >= 3) parts.push(`non-HDL ${targetNonHdl} mmol/L`)
+            return (
+              <div className="card scenario-combined" style={{ borderColor: combined.category.color }}>
+                <h3 className="card-title">Förväntad riskminskning vid behandlingsmål</h3>
+                <p className="card-desc" style={{ fontSize: 13, marginBottom: 10 }}>
+                  Beräknad risk om{' '}
+                  {sbpNow >= 130 && <span>blodtrycket når &lt;130 mmHg</span>}
+                  {sbpNow >= 130 && nonHdlNow >= 3 && <span> och </span>}
+                  {nonHdlNow >= 3 && <span>non-HDL sänks till &lt;3 mmol/L</span>}.
+                </p>
+                <div className="scenario-item" style={{ borderColor: combined.category.color }}>
+                  <div className="scenario-label">Kombinerat mål ({parts.join(' · ')})</div>
+                  <div className="scenario-sbp">{targetSbp} mmHg · non-HDL {targetNonHdl} mmol/L</div>
+                  <div className="scenario-risk" style={{ color: combined.category.color }}>{combined.riskPercent}%</div>
+                  <div className="scenario-cat" style={{ color: combined.category.color }}>{combined.category.label}</div>
+                  <div className="scenario-diff" style={{ color: '#16a34a' }}>−{reduction}% risk</div>
+                </div>
+              </div>
+            )
+          })()}
 
           <div className="card disclaimer-card">
             <p className="disclaimer">
