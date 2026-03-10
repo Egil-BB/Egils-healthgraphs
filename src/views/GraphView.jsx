@@ -70,14 +70,14 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
   medications.filter(med => getMedGraphTargets(med.name).includes('bp')).forEach((med, i) => {
     const idx = filled.findIndex(d => d.date >= med.startDate)
     if (idx < 0) return
-    const medLabel = med.strength ? `${med.name} ${med.strength}` : med.name
+    const medLabel = med.dose ? `${med.name} ${med.dose}` : med.name
     annotations[`med_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
       label: {
-        display: true, content: medLabel, position: 'start',
+        display: true, content: medLabel, position: 'end',
         backgroundColor: medColors[i % medColors.length], color: 'white',
-        font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 10
+        font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10
       }
     }
   })
@@ -192,7 +192,7 @@ function CholesterolGraph({ labs, medications }) {
     annotations[`chol_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.strength ? `${med.name} ${med.strength}` : med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10 }
     }
   })
   annotations.refLine = { type: 'line', yMin: 3.4, yMax: 3.4, borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [5, 5], label: { display: true, content: '3,4', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
@@ -283,7 +283,7 @@ function GlucoseGraph({ labs, medications }) {
     annotations[`glu_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.strength ? `${med.name} ${med.strength}` : med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10 }
     }
   })
   if (glucosePoints.length > 0) {
@@ -356,7 +356,7 @@ function WeightGraph({ weights, heightCm, medications }) {
     annotations[`wt_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.strength ? `${med.name} ${med.strength}` : med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10 }
     }
   })
 
@@ -488,6 +488,110 @@ function LifestyleGraph({ lifestyle }) {
 
 // ── Gut diary graph ────────────────────────────────────────────────────────────
 
+function buildGutHeatmapMonths(entries, months = 3) {
+  const today = new Date()
+  const result = []
+  for (let m = months - 1; m >= 0; m--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - m, 1)
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    const label = d.toLocaleString('sv-SE', { month: 'long', year: 'numeric' })
+    const firstDow = new Date(year, month, 1).getDay()
+    const startPad = (firstDow + 6) % 7
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const days = []
+    for (let i = 0; i < startPad; i++) days.push(null)
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const dayEntries = entries.filter(e => e.date === dateStr)
+      // Most common Bristol type
+      let dominantType = null
+      if (dayEntries.length > 0) {
+        const freq = {}
+        dayEntries.forEach(e => { if (e.bristolType) freq[e.bristolType] = (freq[e.bristolType] || 0) + 1 })
+        dominantType = parseInt(Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0])
+      }
+      days.push({ date: dateStr, dominantType, count: dayEntries.length, entries: dayEntries })
+    }
+    result.push({ label, days })
+  }
+  return result
+}
+
+function GutHeatmap({ gutEntries }) {
+  const [popup, setPopup] = useState(null)
+  const months = buildGutHeatmapMonths(gutEntries, 3)
+  const DOW_LABELS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
+  const bristolLegendFull = [
+    { type: 1, color: '#92400e' }, { type: 2, color: '#b45309' },
+    { type: 3, color: '#16a34a' }, { type: 4, color: '#16a34a' },
+    { type: 5, color: '#ca8a04' }, { type: 6, color: '#dc2626' }, { type: 7, color: '#7f1d1d' }
+  ]
+
+  return (
+    <div className="card chart-card">
+      <div className="chol-header">
+        <span className="card-title">Tarmkalender (3 månader)</span>
+        <span style={{ color: '#64748b', fontSize: 13 }}>Färg = vanligaste Bristol-typ</span>
+      </div>
+      <div className="chart-legend-zones" style={{ flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+        <span className="zone-chip" style={{ background: '#eee', color: '#64748b' }}>■ Ingen</span>
+        {bristolLegendFull.map(l => (
+          <span key={l.type} className="zone-chip" style={{ background: l.color + '30', color: l.color }}>
+            ■ Typ {l.type}
+          </span>
+        ))}
+      </div>
+      {months.map((mo, mi) => (
+        <div key={mi} className="pain-month">
+          <div className="pain-month-label">{mo.label}</div>
+          <div className="pain-month-grid">
+            {DOW_LABELS.map(l => (
+              <div key={l} className="pain-dow-label">{l}</div>
+            ))}
+            {mo.days.map((day, di) => (
+              day === null
+                ? <div key={`pad-${di}`} className="pain-day pain-day-empty" />
+                : (
+                  <div
+                    key={day.date}
+                    className="pain-day"
+                    style={{
+                      background: day.dominantType ? (BRISTOL_COLORS[day.dominantType] || '#eee') + '99' : '#EEEEEE',
+                      cursor: day.entries.length ? 'pointer' : 'default'
+                    }}
+                    onClick={() => day.entries.length && setPopup(day)}
+                    title={day.dominantType ? `Typ ${day.dominantType}` : ''}
+                  />
+                )
+            ))}
+          </div>
+        </div>
+      ))}
+      {popup && (
+        <div className="pain-popup-overlay" onClick={() => setPopup(null)}>
+          <div className="pain-popup" onClick={e => e.stopPropagation()}>
+            <button className="pain-popup-close" onClick={() => setPopup(null)}>✕</button>
+            <div className="pain-popup-date">{popup.date}</div>
+            {popup.entries.map((e, i) => (
+              <div key={i} className="pain-popup-entry">
+                <span style={{ color: BRISTOL_COLORS[e.bristolType] || '#555' }}>
+                  Bristol {e.bristolType}
+                </span>
+                <span style={{ color: '#666', fontSize: 12 }}>
+                  {BRISTOL_LABELS[e.bristolType]}
+                </span>
+                {e.bowelCount > 0 && <span>{e.bowelCount} tömning(ar)</span>}
+              </div>
+            ))}
+            <button className="btn-secondary" style={{ marginTop: 8 }} onClick={() => setPopup(null)}>Stäng</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const BRISTOL_COLORS = {
   1: '#92400e', 2: '#b45309', 3: '#16a34a', 4: '#16a34a',
   5: '#ca8a04', 6: '#dc2626', 7: '#7f1d1d'
@@ -500,6 +604,7 @@ const BRISTOL_LABELS = {
 }
 
 function GutGraph({ gutEntries }) {
+  const [gutView, setGutView] = useState('timeline')
   if (gutEntries.length === 0) {
     return <EmptyState icon="📔" text="Inga tarmdagboksposter. Registrera under Registrera → Tarm." />
   }
@@ -547,54 +652,66 @@ function GutGraph({ gutEntries }) {
   ]
 
   return (
-    <div className="card chart-card">
-      <div className="chol-header">
-        <span className="card-title">Tarmdagbok (90 dagar)</span>
-        <span style={{ color: '#64748b', fontSize: 13 }}>Typ 3–4 = optimal</span>
+    <>
+      <div className="card" style={{ paddingBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="card-title">Tarmdagbok</span>
+          <div className="pain-chart-tabs">
+            <button className={`pain-tab-btn ${gutView === 'timeline' ? 'active' : ''}`} onClick={() => setGutView('timeline')}>Tidslinje</button>
+            <button className={`pain-tab-btn ${gutView === 'kalender' ? 'active' : ''}`} onClick={() => setGutView('kalender')}>Kalender</button>
+          </div>
+        </div>
       </div>
-      <p className="card-desc">Punktfärg = Bristol-typ · Streck = antal tömningar/dag.</p>
-      <div className="chart-wrapper">
-        <Line
-          data={{
-            labels,
-            datasets: [
-              {
-                label: 'Bristol-typ',
-                data: bristolData,
-                borderColor: 'transparent',
-                backgroundColor: pointColors,
-                pointBackgroundColor: pointColors,
-                pointBorderColor: pointColors,
-                pointRadius: 8,
-                pointHoverRadius: 10,
-                showLine: false,
-                tension: 0,
-              },
-              {
-                label: 'Tömningar/dag',
-                data: countData,
-                borderColor: '#0891b2',
-                backgroundColor: 'transparent',
-                borderWidth: 2,
-                borderDash: [5, 4],
-                pointRadius: 3,
-                pointBackgroundColor: '#0891b2',
-                tension: 0.2,
-                yAxisID: 'count'
-              }
-            ]
-          }}
-          options={options}
-        />
-      </div>
-      <div className="chart-legend-zones" style={{ flexWrap: 'wrap', gap: 6 }}>
-        {bristolLegend.map(l => (
-          <span key={l.types} className="zone-chip" style={{ background: l.color + '25', color: l.color }}>
-            ● Typ {l.types} – {l.label}
-          </span>
-        ))}
-      </div>
-    </div>
+
+      {gutView === 'kalender' && <GutHeatmap gutEntries={gutEntries} />}
+
+      {gutView === 'timeline' && (
+        <div className="card chart-card">
+          <p className="card-desc" style={{ marginBottom: 8 }}>Punktfärg = Bristol-typ · Streck = antal tömningar/dag. Typ 3–4 = optimal.</p>
+          <div className="chart-wrapper">
+            <Line
+              data={{
+                labels,
+                datasets: [
+                  {
+                    label: 'Bristol-typ',
+                    data: bristolData,
+                    borderColor: 'transparent',
+                    backgroundColor: pointColors,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: pointColors,
+                    pointRadius: 8,
+                    pointHoverRadius: 10,
+                    showLine: false,
+                    tension: 0,
+                  },
+                  {
+                    label: 'Tömningar/dag',
+                    data: countData,
+                    borderColor: '#0891b2',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 4],
+                    pointRadius: 3,
+                    pointBackgroundColor: '#0891b2',
+                    tension: 0.2,
+                    yAxisID: 'count'
+                  }
+                ]
+              }}
+              options={options}
+            />
+          </div>
+          <div className="chart-legend-zones" style={{ flexWrap: 'wrap', gap: 6 }}>
+            {bristolLegend.map(l => (
+              <span key={l.types} className="zone-chip" style={{ background: l.color + '25', color: l.color }}>
+                ● Typ {l.types} – {l.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
