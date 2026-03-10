@@ -217,6 +217,9 @@ export default function RegisterView({ onDataChange, refreshKey }) {
           <button type="submit" className={`btn-save ${saved ? 'btn-saved' : ''}`} disabled={saving}>
             {saved ? '✓ Sparat!' : saving ? 'Sparar...' : 'Spara mätning'}
           </button>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, textAlign: 'center' }}>
+            För bästa tillförlitlighet, gör minst två mätningar både morgon och kväll (★★★).
+          </p>
         </form>
       </div>
 
@@ -239,7 +242,12 @@ export default function RegisterView({ onDataChange, refreshKey }) {
           {/* Today – largest */}
           {today ? (
             <div className="avg-row avg-row-today">
-              <div className="avg-period">Idag</div>
+              <div className="avg-period">
+                Idag
+                <span style={{ fontSize: 12, marginLeft: 4 }} title="Tillförlitlighetsstjärnor">
+                  {'★'.repeat(getReliabilityStars(todayMs))}{'☆'.repeat(3 - getReliabilityStars(todayMs))}
+                </span>
+              </div>
               <div className="avg-value" style={{ color: classifyBP(today.avgSys, today.avgDia).color }}>
                 {today.avgSys}/{today.avgDia}
                 <span className="avg-unit"> mmHg</span>

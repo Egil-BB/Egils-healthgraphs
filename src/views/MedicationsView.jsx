@@ -11,12 +11,17 @@ const DEHYDRATION_MEDS = ['Metformin', 'Losartan', 'Valsartan', 'Kandesartan', '
 const ARB_ACE_HKTZ = ['Losartan', 'Valsartan', 'Kandesartan', 'Irbesartan', 'Olmesartan', 'Telmisartan',
   'Enalapril', 'Ramipril', 'Lisinopril', 'Perindopril', 'Hydroklortiazid', 'Klortalidon', 'Indapamid',
   'Losartan/Hydroklortiazid', 'Valsartan/Hydroklortiazid', 'Kandesartan/Hydroklortiazid']
+const ARB_ACE = ['Losartan', 'Valsartan', 'Kandesartan', 'Irbesartan', 'Olmesartan', 'Telmisartan',
+  'Enalapril', 'Ramipril', 'Lisinopril', 'Perindopril']
+const NSAIDS = ['Ibuprofen', 'Naproxen', 'Diklofenak', 'Piroxikam', 'Indometacin', 'Celecoxib', 'Etoricoxib', 'Meloxikam']
 
 function getMedWarnings(medications, latestEgfr, latestCreatinine) {
   const names = medications.map(m => m.name)
   const warnings = []
   const hasMetformin = names.some(n => n.toLowerCase().includes('metformin'))
   const hasArbOrHktz = names.some(n => ARB_ACE_HKTZ.some(a => n.includes(a)))
+  const hasArbOrAce = names.some(n => ARB_ACE.some(a => n.includes(a)))
+  const hasNsaid = names.some(n => NSAIDS.some(s => n.includes(s)))
   const hasDehydrationMed = names.some(n => DEHYDRATION_MEDS.some(d => n.includes(d)))
 
   if (hasDehydrationMed) {
@@ -54,7 +59,17 @@ function getMedWarnings(medications, latestEgfr, latestCreatinine) {
       type: 'info',
       icon: 'ℹ',
       title: 'Nya prover efter dosändring av ARB/ACE/diuretika',
-      text: 'Efter dosändring av ARB, ACE-hämmare eller diuretika (t.ex. Losartan, HydroCKlortia­zid) rekommenderas nya blodprover efter 1–2 veckor för kontroll av njurfunktion (kreatinin/eGFR) och elektrolyter (kalium), eftersom dessa läkemedel kan påverka båda.',
+      text: 'Efter dosändring av ARB, ACE-hämmare eller diuretika (t.ex. Losartan, Hydroklortiazid) rekommenderas nya blodprover kring 2 veckor senare för kontroll av njurfunktion (kreatinin/eGFR) och elektrolyter (kalium), eftersom dessa läkemedel kan påverka båda.',
+      link: 'https://www.1177.se'
+    })
+  }
+
+  if (hasNsaid && hasArbOrAce) {
+    warnings.push({
+      type: 'info',
+      icon: 'ℹ',
+      title: 'NSAID + ARB/ACE-hämmare – var uppmärksam',
+      text: 'Regelbunden användning av NSAID-preparat (t.ex. Ibuprofen, Naproxen) tillsammans med ARB eller ACE-hämmare kan minska den blodtryckssänkande effekten och öka risken för njurpåverkan. Prata med din läkare om du behöver smärtstillande regelbundet.',
       link: 'https://www.1177.se'
     })
   }

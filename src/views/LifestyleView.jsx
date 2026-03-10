@@ -204,34 +204,10 @@ function ResultView({ entry, history, onNewEntry, justSubmitted }) {
           {!justSubmitted && <p className="lifestyle-next-date">Nästa enkät öppnas {nextStr}</p>}
         </div>
 
-        {justSubmitted && (
-          <div className="lifestyle-cat-scores">
-            <h3 className="card-title" style={{ marginBottom: 8 }}>Poäng per kategori</h3>
-            {LIFESTYLE_CATEGORIES.map(cat => {
-              let catScore = 0
-              for (const q of cat.questions) {
-                if (q.scoreless) continue
-                const visible = !q.showIf || q.showIf(answers)
-                if (!visible) { catScore += q.autoScoreWhenHidden ?? 0; continue }
-                const opt = q.options.find(o => o.value === answers[q.id])
-                if (opt) catScore += opt.score
-              }
-              const pct = Math.round((catScore / cat.maxScore) * 100)
-              const catLabel = getScoreLabel(pct)
-              return (
-                <div key={cat.id} className="cat-score-row">
-                  <span className="cat-score-name">{cat.icon} {cat.title}</span>
-                  <div className="cat-score-bar-wrap">
-                    <div className="cat-score-bar" style={{ width: `${pct}%`, background: catLabel.color }} />
-                  </div>
-                  <span className="cat-score-pts" style={{ color: catLabel.color }}>
-                    {catScore}/{cat.maxScore}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <div style={{ marginTop: 8 }}>
+          <h3 className="card-title" style={{ marginBottom: 8 }}>Poäng per kategori</h3>
+          <CatBreakdown answers={answers} />
+        </div>
       </div>
 
       {/* Smoking warning */}
@@ -262,25 +238,95 @@ function ResultView({ entry, history, onNewEntry, justSubmitted }) {
 
 // ── History list ──────────────────────────────────────────────────────────────
 
+function CatBreakdown({ answers }) {
+  if (!answers) return null
+  const cats = LIFESTYLE_CATEGORIES.map(cat => {
+    let catScore = 0
+    for (const q of cat.questions) {
+      if (q.scoreless) continue
+      const visible = !q.showIf || q.showIf(answers)
+      if (!visible) { catScore += q.autoScoreWhenHidden ?? 0; continue }
+      const opt = q.options.find(o => o.value === answers[q.id])
+      if (opt) catScore += opt.score
+    }
+    const pct = Math.round((catScore / cat.maxScore) * 100)
+    return { cat, catScore, pct }
+  })
+
+  return (
+    <div className="lifestyle-cat-scores" style={{ marginTop: 12 }}>
+      {cats.map(({ cat, catScore, pct }) => {
+        const catLabel = getScoreLabel(pct)
+        return (
+          <div key={cat.id} className="cat-score-row">
+            <span className="cat-score-name">{cat.icon} {cat.title}</span>
+            <div className="cat-score-bar-wrap">
+              <div className="cat-score-bar" style={{ width: `${pct}%`, background: catLabel.color }} />
+            </div>
+            <span className="cat-score-pts" style={{ color: catLabel.color }}>
+              {catScore}/{cat.maxScore}
+            </span>
+          </div>
+        )
+      })}
+      <HistoryFeedback cats={cats} />
+    </div>
+  )
+}
+
+function HistoryFeedback({ cats }) {
+  const good = cats.filter(c => c.pct >= 80)
+  const poor = cats.filter(c => c.pct < 50)
+  if (good.length === 0 && poor.length === 0) return null
+  return (
+    <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-muted, #555)' }}>
+      {good.length > 0 && (
+        <p style={{ color: '#16a34a', marginBottom: 4 }}>
+          ✓ Bra jobbat med {good.map(c => c.cat.title.toLowerCase()).join(', ')}!
+        </p>
+      )}
+      {poor.length > 0 && (
+        <p style={{ color: '#ca8a04', marginBottom: 4 }}>
+          → Störst förbättringspotential: {poor.map(c => c.cat.title.toLowerCase()).join(', ')}.{' '}
+          Se tips i <strong>Infofliken</strong>.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function HistoryList({ history }) {
+  const [expandedId, setExpandedId] = useState(null)
   if (history.length === 0) return null
   return (
     <div className="card">
       <h3 className="card-title">Historik</h3>
       {history.slice(0, 18).map((e, i) => {
         const l = getScoreLabel(e.score)
+        const id = e.id || i
+        const isOpen = expandedId === id
         return (
-          <div key={e.id || i} className="lifestyle-history-row">
-            <span className="lifestyle-history-date">{formatDateSv(e.date)}</span>
-            <div className="lifestyle-history-bar-wrap">
-              <div
-                className="lifestyle-history-bar"
-                style={{ width: `${e.score}%`, background: l.color }}
-              />
+          <div key={id}>
+            <div
+              className="lifestyle-history-row"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setExpandedId(isOpen ? null : id)}
+            >
+              <span className="lifestyle-history-date">{formatDateSv(e.date)}</span>
+              <div className="lifestyle-history-bar-wrap">
+                <div
+                  className="lifestyle-history-bar"
+                  style={{ width: `${e.score}%`, background: l.color }}
+                />
+              </div>
+              <span className="lifestyle-history-score" style={{ color: l.color }}>
+                {e.score}p
+              </span>
+              <span style={{ fontSize: 12, marginLeft: 4, color: '#999' }}>
+                {isOpen ? '▲' : '▼'}
+              </span>
             </div>
-            <span className="lifestyle-history-score" style={{ color: l.color }}>
-              {e.score}p
-            </span>
+            {isOpen && <CatBreakdown answers={e.answers} />}
           </div>
         )
       })}

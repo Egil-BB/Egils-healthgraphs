@@ -14,9 +14,9 @@ import DiaryView from './views/DiaryView'
 import MictView from './views/MictView'
 import PainView from './views/PainView'
 import { getAllLifestyle, getProfile } from './db/db'
-import { DEFAULT_ENABLED_IDS, buildEnabledTabs } from './utils/modules'
+import { DEFAULT_ENABLED_IDS, buildEnabledTabs, buildRegisterSubTabs } from './utils/modules'
 
-const REGISTER_TABS = [
+const REGISTER_CORE_TABS = [
   { id: 'bp', label: 'Blodtryck' },
   { id: 'labs', label: 'Provsvar' },
   { id: 'weight', label: 'Vikt' },
@@ -80,36 +80,52 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {tab === 'register' && (
-          <>
-            <div className="subtab-bar subtab-bar-scroll">
-              {REGISTER_TABS.map(t => (
-                <button
-                  key={t.id}
-                  className={`subtab-btn ${registerSubTab === t.id ? 'subtab-active' : ''}`}
-                  onClick={() => setRegisterSubTab(t.id)}
-                >
-                  {t.label}
-                  {t.id === 'lifestyle' && lifestyleStatus !== 'ok' && (
-                    <span className={`tab-status-dot dot-${lifestyleStatus}`}>●</span>
-                  )}
-                </button>
-              ))}
-            </div>
-            {registerSubTab === 'bp' && (
-              <RegisterView onDataChange={handleDataChange} refreshKey={refreshKey} />
-            )}
-            {registerSubTab === 'labs' && (
-              <LabsView onDataChange={handleDataChange} />
-            )}
-            {registerSubTab === 'weight' && (
-              <WeightView onDataChange={handleDataChange} refreshKey={refreshKey} />
-            )}
-            {registerSubTab === 'lifestyle' && (
-              <LifestyleView onDataChange={handleLifestyleDataChange} />
-            )}
-          </>
-        )}
+        {tab === 'register' && (() => {
+          const extraSubTabs = buildRegisterSubTabs(enabledModules)
+          const allRegisterTabs = [
+            ...REGISTER_CORE_TABS,
+            ...extraSubTabs.map(m => ({ id: m.id, label: m.label }))
+          ]
+          return (
+            <>
+              <div className="subtab-bar subtab-bar-scroll">
+                {allRegisterTabs.map(t => (
+                  <button
+                    key={t.id}
+                    className={`subtab-btn ${registerSubTab === t.id ? 'subtab-active' : ''}`}
+                    onClick={() => setRegisterSubTab(t.id)}
+                  >
+                    {t.label}
+                    {t.id === 'lifestyle' && lifestyleStatus !== 'ok' && (
+                      <span className={`tab-status-dot dot-${lifestyleStatus}`}>●</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {registerSubTab === 'bp' && (
+                <RegisterView onDataChange={handleDataChange} refreshKey={refreshKey} />
+              )}
+              {registerSubTab === 'labs' && (
+                <LabsView onDataChange={handleDataChange} />
+              )}
+              {registerSubTab === 'weight' && (
+                <WeightView onDataChange={handleDataChange} refreshKey={refreshKey} />
+              )}
+              {registerSubTab === 'lifestyle' && (
+                <LifestyleView onDataChange={handleLifestyleDataChange} />
+              )}
+              {registerSubTab === 'diary' && (
+                <DiaryView onDataChange={handleDataChange} />
+              )}
+              {registerSubTab === 'micturition' && (
+                <MictView onDataChange={handleDataChange} />
+              )}
+              {registerSubTab === 'pain' && (
+                <PainView onDataChange={handleDataChange} />
+              )}
+            </>
+          )
+        })()}
 
         {tab === 'graph' && (
           <GraphView refreshKey={refreshKey} />
@@ -121,18 +137,6 @@ export default function App() {
 
         {tab === 'score' && (
           <ScoreView refreshKey={refreshKey} />
-        )}
-
-        {tab === 'diary' && (
-          <DiaryView onDataChange={handleDataChange} />
-        )}
-
-        {tab === 'micturition' && (
-          <MictView onDataChange={handleDataChange} />
-        )}
-
-        {tab === 'pain' && (
-          <PainView onDataChange={handleDataChange} />
         )}
 
         {tab === 'info' && (
