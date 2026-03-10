@@ -378,7 +378,7 @@ function WeightGraph({ weights, heightCm, medications }) {
   const latest = sorted[sorted.length - 1]
   const latestBmi = heightCm ? (latest.weight / Math.pow(heightCm / 100, 2)).toFixed(1) : null
 
-  return (
+  const mainCard = (
     <div className="card chart-card">
       <div className="chol-header">
         <span className="card-title">Viktkurva</span>
@@ -390,6 +390,51 @@ function WeightGraph({ weights, heightCm, medications }) {
       <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
     </div>
   )
+
+  // Waist graph
+  const waistEntries = sorted.filter(w => w.waist > 0)
+  const waistCard = waistEntries.length > 1 ? (
+    <div className="card chart-card" style={{ marginTop: 0 }}>
+      <div className="chol-header">
+        <span className="card-title">Bukomfång</span>
+        <span style={{ color: '#7c3aed', fontWeight: 700 }}>
+          Senast: {waistEntries[waistEntries.length - 1].waist} cm
+        </span>
+      </div>
+      <p className="card-desc">Midjemåttet speglar bukfetma och metabol risk bättre än BMI.</p>
+      <div className="chart-wrapper">
+        <Line
+          data={{
+            labels: waistEntries.map(w => dateLabel(w.date, waistEntries.length > 6)),
+            datasets: [{
+              label: 'Midjemått (cm)',
+              data: waistEntries.map(w => w.waist),
+              borderColor: '#7c3aed',
+              backgroundColor: 'rgba(124,58,237,0.1)',
+              borderWidth: 2.5,
+              pointRadius: 5,
+              tension: 0.2,
+              fill: true,
+            }]
+          }}
+          options={{
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: item => `${item.raw} cm` } },
+              annotation: { annotations: {} }
+            },
+            scales: {
+              x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
+              y: { title: { display: true, text: 'cm', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }
+            }
+          }}
+        />
+      </div>
+    </div>
+  ) : null
+
+  return <>{mainCard}{waistCard}</>
 }
 
 // ── Lifestyle score graph ─────────────────────────────────────────────────────
@@ -445,22 +490,28 @@ function LifestyleGraph({ lifestyle }) {
 
 const BRISTOL_COLORS = {
   1: '#92400e', 2: '#b45309', 3: '#16a34a', 4: '#16a34a',
-  5: '#ca8a04', 6: '#dc2626', 7: '#dc2626'
+  5: '#ca8a04', 6: '#dc2626', 7: '#7f1d1d'
+}
+
+const BRISTOL_LABELS = {
+  1: 'Typ 1 – hård/klump', 2: 'Typ 2 – knölig', 3: 'Typ 3 – sprickig',
+  4: 'Typ 4 – slät (optimal)', 5: 'Typ 5 – mjuka klumpar',
+  6: 'Typ 6 – lös/grötig', 7: 'Typ 7 – flytande'
 }
 
 function GutGraph({ gutEntries }) {
   if (gutEntries.length === 0) {
-    return <EmptyState icon="📔" text="Inga tarmdagboksposter. Registrera under Dagbok-fliken." />
+    return <EmptyState icon="📔" text="Inga tarmdagboksposter. Registrera under Registrera → Tarm." />
   }
 
   const sorted = [...gutEntries].sort((a, b) => a.date.localeCompare(b.date))
-  const last30 = sorted.filter(e => e.date >= daysAgo(90))
-  const display = last30.length > 0 ? last30 : sorted.slice(-20)
+  const last90 = sorted.filter(e => e.date >= daysAgo(90))
+  const display = last90.length > 0 ? last90 : sorted.slice(-20)
 
   const labels = display.map(e => dateLabel(e.date, true))
   const bristolData = display.map(e => e.bristolType)
+  const pointColors = display.map(e => BRISTOL_COLORS[e.bristolType] || '#64748b')
   const countData = display.map(e => e.bowelCount)
-  const bgColors = display.map(e => (BRISTOL_COLORS[e.bristolType] || '#64748b') + 'cc')
 
   const options = {
     responsive: true, maintainAspectRatio: false,
@@ -469,49 +520,79 @@ function GutGraph({ gutEntries }) {
       tooltip: {
         callbacks: {
           label: item => {
-            if (item.datasetIndex === 0) return `Bristol typ ${item.raw}`
+            if (item.datasetIndex === 0) return BRISTOL_LABELS[item.raw] || `Bristol typ ${item.raw}`
             return `Tömningar: ${item.raw}`
           }
         }
       },
       annotation: {
         annotations: {
-          normalMin: { type: 'line', yMin: 3, yMax: 3, borderColor: 'rgba(22,163,74,0.4)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: 'Typ 3', position: 'start', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } },
-          normalMax: { type: 'line', yMin: 4, yMax: 4, borderColor: 'rgba(22,163,74,0.4)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: 'Typ 4', position: 'start', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
+          optimal: { type: 'line', yMin: 4, yMax: 4, borderColor: 'rgba(22,163,74,0.7)', borderWidth: 2, label: { display: true, content: 'Typ 4 – optimal', position: 'end', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
         }
       }
     },
     scales: {
       x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
-      y: { min: 0, max: 8, title: { display: true, text: 'Bristol-typ', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      y: { min: 0.5, max: 7.5, title: { display: true, text: 'Bristol-typ', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
       count: { position: 'right', min: 0, max: 8, title: { display: true, text: 'Tömn/dag', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { drawOnChartArea: false } }
     }
   }
+
+  // Bristol color legend
+  const bristolLegend = [
+    { types: '1–2', color: '#b45309', label: 'Hård' },
+    { types: '3–4', color: '#16a34a', label: 'Normal' },
+    { types: '5–6', color: '#ca8a04', label: 'Lös' },
+    { types: '7', color: '#7f1d1d', label: 'Flytande' },
+  ]
 
   return (
     <div className="card chart-card">
       <div className="chol-header">
         <span className="card-title">Tarmdagbok (90 dagar)</span>
-        <span style={{ color: '#64748b', fontSize: 13 }}>
-          Typ 3–4 = optimal
-        </span>
+        <span style={{ color: '#64748b', fontSize: 13 }}>Typ 3–4 = optimal</span>
       </div>
-      <p className="card-desc">Bristol-typ (vänster) och antal tömningar/dag (höger).</p>
+      <p className="card-desc">Punktfärg = Bristol-typ · Streck = antal tömningar/dag.</p>
       <div className="chart-wrapper">
         <Line
           data={{
             labels,
             datasets: [
-              { label: 'Bristol-typ', data: bristolData, borderColor: '#7c3aed', backgroundColor: bgColors, borderWidth: 2.5, pointRadius: 6, pointBackgroundColor: bgColors, tension: 0.2 },
-              { label: 'Tömningar/dag', data: countData, borderColor: '#0891b2', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: 4, tension: 0.2, yAxisID: 'count' }
+              {
+                label: 'Bristol-typ',
+                data: bristolData,
+                borderColor: 'transparent',
+                backgroundColor: pointColors,
+                pointBackgroundColor: pointColors,
+                pointBorderColor: pointColors,
+                pointRadius: 8,
+                pointHoverRadius: 10,
+                showLine: false,
+                tension: 0,
+              },
+              {
+                label: 'Tömningar/dag',
+                data: countData,
+                borderColor: '#0891b2',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [5, 4],
+                pointRadius: 3,
+                pointBackgroundColor: '#0891b2',
+                tension: 0.2,
+                yAxisID: 'count'
+              }
             ]
           }}
           options={options}
         />
       </div>
-      <div className="chart-legend-zones">
-        <span className="zone-chip" style={{ background: '#dcfce7', color: '#16a34a' }}>Typ 3–4 optimal</span>
-        <span className="zone-chip" style={{ background: '#fee2e2', color: '#dc2626' }}>Typ 1–2 hård · 6–7 lös</span>
+      <div className="chart-legend-zones" style={{ flexWrap: 'wrap', gap: 6 }}>
+        {bristolLegend.map(l => (
+          <span key={l.types} className="zone-chip" style={{ background: l.color + '25', color: l.color }}>
+            ● Typ {l.types} – {l.label}
+          </span>
+        ))}
       </div>
     </div>
   )
