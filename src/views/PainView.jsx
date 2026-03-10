@@ -307,49 +307,35 @@ function MedCounter({ meds, onChange }) {
 
 function PainWizard({ onSave, onClose }) {
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState({ ...EMPTY_FORM, medications: { ...EMPTY_FORM.medications } })
+  const [form, setForm] = useState({ nrs: 5, pegEnjoy: 5, pegActivity: 5, locations: [] })
   const pegScore = ((form.nrs + form.pegEnjoy + form.pegActivity) / 3).toFixed(1)
   const today = new Date().toISOString().slice(0, 10)
   const time = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
 
-  const canSave = step >= 2
-
   async function handleSave() {
     const id = `pain_${Date.now()}`
-    const entry = {
-      id,
-      date: today,
-      time,
-      nrs: form.nrs,
-      pegEnjoy: form.pegEnjoy,
-      pegActivity: form.pegActivity,
+    await addPainEntry({
+      id, date: today, time,
+      nrs: form.nrs, pegEnjoy: form.pegEnjoy, pegActivity: form.pegActivity,
       pegScore: parseFloat(pegScore),
       locations: form.locations,
-      quality: form.quality,
-      triggers: { ...form.triggers },
-      medications: { ...form.medications },
-      notes: form.notes,
-    }
-    await addPainEntry(entry)
+    })
     onSave()
   }
 
   return (
     <div className="pain-wizard-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="pain-wizard">
-        {/* Progress */}
         <div className="pain-wizard-progress">
-          {[1, 2, 3, 4].map(s => (
+          {[1, 2].map(s => (
             <div key={s} className={`pain-prog-dot ${step >= s ? 'active' : ''}`} />
           ))}
         </div>
-
         <button className="pain-wizard-close" onClick={onClose}>✕</button>
 
-        {/* Step 1 */}
         {step === 1 && (
           <div className="pain-wizard-step">
-            <h3 className="pain-step-title">Steg 1 av 4 — Intensitet &amp; påverkan</h3>
+            <h3 className="pain-step-title">Steg 1 av 2 — Intensitet &amp; påverkan</h3>
             <SliderField
               label="Hur ont gör det just nu?"
               value={form.nrs}
@@ -374,10 +360,9 @@ function PainWizard({ onSave, onClose }) {
           </div>
         )}
 
-        {/* Step 2 */}
         {step === 2 && (
           <div className="pain-wizard-step">
-            <h3 className="pain-step-title">Steg 2 av 4 — Lokalisering (valfritt)</h3>
+            <h3 className="pain-step-title">Steg 2 av 2 — Lokalisering (valfritt)</h3>
             <BodyMap
               selected={form.locations}
               onChange={locs => setForm(f => ({ ...f, locations: locs }))}
@@ -385,65 +370,54 @@ function PainWizard({ onSave, onClose }) {
           </div>
         )}
 
-        {/* Step 3 */}
-        {step === 3 && (
-          <div className="pain-wizard-step">
-            <h3 className="pain-step-title">Steg 3 av 4 — Smärtkvalitet &amp; utlösare (valfritt)</h3>
-            <div className="pain-section-label">Smärtkvalitet</div>
-            <ChipGroup
-              options={QUALITY_OPTIONS}
-              selected={form.quality}
-              onChange={q => setForm(f => ({ ...f, quality: q }))}
-            />
-            <div className="pain-section-label" style={{ marginTop: 16 }}>Förvärras av</div>
-            <ChipGroup
-              options={WORSENED_OPTIONS}
-              selected={form.triggers.worsenedBy}
-              onChange={w => setForm(f => ({ ...f, triggers: { ...f.triggers, worsenedBy: w } }))}
-            />
-            <div className="pain-section-label" style={{ marginTop: 12 }}>Lindras av</div>
-            <ChipGroup
-              options={RELIEVED_OPTIONS}
-              selected={form.triggers.relievedBy}
-              onChange={r => setForm(f => ({ ...f, triggers: { ...f.triggers, relievedBy: r } }))}
-            />
-          </div>
-        )}
-
-        {/* Step 4 */}
-        {step === 4 && (
-          <div className="pain-wizard-step">
-            <h3 className="pain-step-title">Steg 4 av 4 — Läkemedel (valfritt)</h3>
-            <MedCounter
-              meds={form.medications}
-              onChange={m => setForm(f => ({ ...f, medications: m }))}
-            />
-            <textarea
-              className="pain-notes"
-              placeholder="Övriga anteckningar..."
-              value={form.notes}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-            />
-          </div>
-        )}
-
-        {/* Navigation */}
         <div className="pain-wizard-nav">
           {step > 1 && (
             <button type="button" className="btn-secondary" onClick={() => setStep(s => s - 1)}>← Tillbaka</button>
           )}
-          {canSave && (
+          {step === 1 && (
+            <button type="button" className="btn-primary" onClick={() => setStep(2)}>Nästa →</button>
+          )}
+          {step === 2 && (
             <button type="button" className="btn-primary" onClick={handleSave}>Spara</button>
           )}
-          {step < 4 && (
-            <button type="button" className="btn-primary" onClick={() => setStep(s => s + 1)}>
-              {step === 1 ? 'Nästa →' : 'Nästa →'}
-            </button>
-          )}
         </div>
-        {step > 1 && step < 4 && (
-          <button type="button" className="pain-skip" onClick={() => setStep(s => s + 1)}>Hoppa över →</button>
+        {step === 2 && (
+          <button type="button" className="pain-skip" onClick={handleSave}>Hoppa över &amp; spara</button>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── PRN medication modal ──────────────────────────────────────────────────────
+
+function PrnModal({ onSave, onClose }) {
+  const [meds, setMeds] = useState({ paracetamol: 0, ibuprofen: 0, naproxen: 0, diclofenac: 0, tramadol: 0, codeine: 0, other: '' })
+  const today = new Date().toISOString().slice(0, 10)
+  const time = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+  const hasAny = MEDS.some(m => meds[m.id] > 0) || (meds.other && meds.other.trim())
+
+  async function handleSave() {
+    const id = `pain_${Date.now()}`
+    await addPainEntry({
+      id, date: today, time,
+      nrs: null, pegEnjoy: null, pegActivity: null, pegScore: null,
+      locations: [],
+      medications: { ...meds },
+    })
+    onSave()
+  }
+
+  return (
+    <div className="pain-wizard-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="pain-wizard">
+        <button className="pain-wizard-close" onClick={onClose}>✕</button>
+        <h3 className="pain-step-title">💊 Behovsmedicin tagen</h3>
+        <MedCounter meds={meds} onChange={setMeds} />
+        <div className="pain-wizard-nav">
+          <button type="button" className="btn-secondary" onClick={onClose}>Avbryt</button>
+          <button type="button" className="btn-primary" disabled={!hasAny} onClick={handleSave}>Spara</button>
+        </div>
       </div>
     </div>
   )
@@ -457,16 +431,19 @@ function TimelineChart({ entries, range }) {
     <p className="pain-empty">Inga smärtregistreringar i valt tidsintervall.</p>
   )
 
-  // Group by date: take max NRS and avg PEG per day
+  // Group by date: take max NRS and avg PEG per day (skip PRN-only entries with null nrs)
   const byDate = {}
   for (const e of filtered) {
     if (!byDate[e.date]) byDate[e.date] = []
     byDate[e.date].push(e)
   }
-  const dates = Object.keys(byDate).sort()
-  const nrsData = dates.map(d => Math.max(...byDate[d].map(e => e.nrs)))
+  const allDates = Object.keys(byDate).sort()
+  // Only show dates that have at least one entry with a real NRS score
+  const dates = allDates.filter(d => byDate[d].some(e => e.nrs !== null && e.nrs !== undefined))
+  const nrsData = dates.map(d => Math.max(...byDate[d].filter(e => e.nrs != null).map(e => e.nrs)))
   const pegData = dates.map(d => {
-    const arr = byDate[d]
+    const arr = byDate[d].filter(e => e.pegScore != null)
+    if (!arr.length) return null
     return Math.round(arr.reduce((s, e) => s + e.pegScore, 0) / arr.length * 10) / 10
   })
   const medDates = dates.filter(d => byDate[d].some(e => {
@@ -601,6 +578,7 @@ function HeatmapCalendar({ entries }) {
 export default function PainView({ onDataChange }) {
   const [entries, setEntries] = useState([])
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [prnOpen, setPrnOpen] = useState(false)
   const [chartView, setChartView] = useState('timeline')
   const [timeRange, setTimeRange] = useState('30d')
   const [warnings, setWarnings] = useState([])
@@ -637,9 +615,14 @@ export default function PainView({ onDataChange }) {
         <p className="card-desc" style={{ fontSize: 13, marginBottom: 12 }}>
           Registrera smärta med NRS-skala och PEG (intensitet + påverkan på aktivitet och livsglädje). Visualiseras som tidslinje och värmekarta.
         </p>
-        <button className="btn-primary pain-add-btn" onClick={() => setWizardOpen(true)}>
-          + Registrera smärta
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn-primary pain-add-btn" onClick={() => setWizardOpen(true)}>
+            + Registrera smärta
+          </button>
+          <button className="btn-secondary" onClick={() => setPrnOpen(true)}>
+            💊 Behovsmedicin
+          </button>
+        </div>
       </div>
 
       {/* Warnings */}
@@ -709,8 +692,9 @@ export default function PainView({ onDataChange }) {
                   <button className="delete-btn" onClick={() => handleDelete(e.id)}>✕</button>
                 </div>
                 <div className="pain-history-vals">
-                  <span style={{ color: nrsColor(e.nrs) }} className="pain-hist-nrs">NRS {e.nrs}</span>
-                  <span style={{ color: pegColor(e.pegScore) }} className="pain-hist-peg">PEG {e.pegScore}</span>
+                  {e.nrs != null && <span style={{ color: nrsColor(e.nrs) }} className="pain-hist-nrs">NRS {e.nrs}</span>}
+                  {e.pegScore != null && <span style={{ color: pegColor(e.pegScore) }} className="pain-hist-peg">PEG {e.pegScore}</span>}
+                  {e.nrs == null && <span className="pain-hist-prn">💊 Behovsmedicin</span>}
                 </div>
                 {locLabels.length > 0 && <div className="pain-history-locs">📍 {locLabels.join(', ')}</div>}
                 {e.quality?.length > 0 && (
@@ -728,6 +712,9 @@ export default function PainView({ onDataChange }) {
 
       {wizardOpen && (
         <PainWizard onSave={handleSaved} onClose={() => setWizardOpen(false)} />
+      )}
+      {prnOpen && (
+        <PrnModal onSave={() => { setPrnOpen(false); load(); onDataChange?.() }} onClose={() => setPrnOpen(false)} />
       )}
     </div>
   )
