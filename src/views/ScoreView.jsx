@@ -155,6 +155,7 @@ export default function ScoreView({ refreshKey }) {
   const [missing, setMissing] = useState([])
   const [autoParams, setAutoParams] = useState(null)
   const [bmiData, setBmiData] = useState(null)
+  const [waistData, setWaistData] = useState(null)
   const [clinicalFlags, setClinicalFlags] = useState([])
   const [psaData, setPsaData] = useState(null)
   const [psaHereditary, setPsaHereditary] = useState(false)
@@ -183,7 +184,17 @@ export default function ScoreView({ refreshKey }) {
         const latestW = [...weights].sort((a, b) => b.date.localeCompare(a.date))[0]
         const bmi = calcBMI(latestW.weight, savedProfile.height)
         if (bmi) setBmiData({ bmi, weight: latestW.weight, height: savedProfile.height, date: latestW.date, category: bmiCategory(bmi) })
-        if (latestW.waist) latestWaist = latestW.waist
+        if (latestW.waist) {
+          latestWaist = latestW.waist
+          const profileSex = savedProfile?.sex || 'male'
+          const riskLimit = profileSex === 'female' ? 80 : 94
+          const highRiskLimit = profileSex === 'female' ? 88 : 102
+          let riskLevel, riskColor, riskLabel
+          if (latestW.waist < riskLimit) { riskLevel = 'ok'; riskColor = '#16a34a'; riskLabel = 'Ingen förhöjd risk' }
+          else if (latestW.waist < highRiskLimit) { riskLevel = 'warn'; riskColor = '#ca8a04'; riskLabel = 'Ökad risk' }
+          else { riskLevel = 'high'; riskColor = '#dc2626'; riskLabel = 'Hög risk' }
+          setWaistData({ waist: latestW.waist, sex: profileSex, riskLimit, highRiskLimit, riskLevel, riskColor, riskLabel, date: latestW.date })
+        }
       }
 
       // Age from birthdate
@@ -344,6 +355,41 @@ export default function ScoreView({ refreshKey }) {
             >▼</div>
           </div>
           <p className="bmi-disclaimer">BMI kan vara missvisande vid hög muskelmassa.</p>
+
+          {waistData && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Midjemått</span>
+                <span style={{ fontSize: 20, fontWeight: 800, color: waistData.riskColor }}>
+                  {waistData.waist} cm
+                  <span style={{ fontSize: 13, fontWeight: 600, marginLeft: 8 }}>{waistData.riskLabel}</span>
+                </span>
+              </div>
+              <div style={{ position: 'relative', height: 28, borderRadius: 6, overflow: 'hidden', display: 'flex' }}>
+                <div style={{ flex: waistData.riskLimit, background: '#dcfce730', borderRight: '2px solid #16a34a' }} />
+                <div style={{ flex: waistData.highRiskLimit - waistData.riskLimit, background: '#fef9c330', borderRight: '2px solid #ca8a04' }} />
+                <div style={{ flex: 20, background: '#fee2e230' }} />
+                <div style={{
+                  position: 'absolute', top: 0, bottom: 0, width: 3, background: waistData.riskColor, borderRadius: 2,
+                  left: `${Math.min(Math.max((waistData.waist - (waistData.riskLimit - 20)) / ((waistData.highRiskLimit + 20) - (waistData.riskLimit - 20)) * 100, 1), 98)}%`
+                }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                <span style={{ color: '#16a34a' }}>Normal (&lt;{waistData.riskLimit} cm)</span>
+                <span style={{ color: '#ca8a04' }}>Ökad ({waistData.riskLimit}–{waistData.highRiskLimit - 1})</span>
+                <span style={{ color: '#dc2626' }}>Hög risk (≥{waistData.highRiskLimit})</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                Gränser gäller {waistData.sex === 'female' ? 'kvinnor' : 'män'}.
+                Midjemått är central för bedömning av metabol risk.
+              </p>
+            </div>
+          )}
+          {!waistData && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>
+              Registrera midjemått under Vikt för riskvärdering av bukfetma.
+            </p>
+          )}
         </div>
       )}
 

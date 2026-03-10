@@ -70,11 +70,12 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
   medications.filter(med => getMedGraphTargets(med.name).includes('bp')).forEach((med, i) => {
     const idx = filled.findIndex(d => d.date >= med.startDate)
     if (idx < 0) return
+    const medLabel = med.strength ? `${med.name} ${med.strength}` : med.name
     annotations[`med_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
       label: {
-        display: true, content: med.name, position: 'start',
+        display: true, content: medLabel, position: 'start',
         backgroundColor: medColors[i % medColors.length], color: 'white',
         font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 10
       }
@@ -191,7 +192,7 @@ function CholesterolGraph({ labs, medications }) {
     annotations[`chol_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+      label: { display: true, content: med.strength ? `${med.name} ${med.strength}` : med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
     }
   })
   annotations.refLine = { type: 'line', yMin: 3.4, yMax: 3.4, borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [5, 5], label: { display: true, content: '3,4', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
@@ -282,7 +283,7 @@ function GlucoseGraph({ labs, medications }) {
     annotations[`glu_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+      label: { display: true, content: med.strength ? `${med.name} ${med.strength}` : med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
     }
   })
   if (glucosePoints.length > 0) {
@@ -355,7 +356,7 @@ function WeightGraph({ weights, heightCm, medications }) {
     annotations[`wt_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
+      label: { display: true, content: med.strength ? `${med.name} ${med.strength}` : med.name, position: 'start', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4 }
     }
   })
 

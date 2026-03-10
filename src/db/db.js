@@ -5,6 +5,11 @@ const DB_VERSION = 5
 
 let dbPromise = null
 
+// Request persistent storage to prevent browser from evicting data (important on Android Chrome)
+if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {/* ignore if denied */})
+}
+
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {

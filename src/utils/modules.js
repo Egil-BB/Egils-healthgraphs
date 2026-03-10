@@ -2,6 +2,7 @@
  * All available navigation modules.
  * alwaysOn: true = always in navbar, cannot be disabled
  * defaultOn: true = enabled by default for new users
+ * registerSubTab: true = shown as a subtab in Register, not in the main navbar
  */
 export const ALL_MODULES = [
   {
@@ -10,6 +11,7 @@ export const ALL_MODULES = [
     icon: '💓',
     alwaysOn: false,
     defaultOn: true,
+    registerSubTab: false,
     desc: 'Blodtryck, provsvar, vikt och levnadsvanor',
   },
   {
@@ -18,6 +20,7 @@ export const ALL_MODULES = [
     icon: '📈',
     alwaysOn: false,
     defaultOn: true,
+    registerSubTab: false,
     desc: 'Kurvor och trender över tid',
   },
   {
@@ -26,6 +29,7 @@ export const ALL_MODULES = [
     icon: '🎯',
     alwaysOn: false,
     defaultOn: true,
+    registerSubTab: false,
     desc: 'SCORE2 kardiovaskulär 10-årsrisk och BMI',
   },
   {
@@ -34,23 +38,26 @@ export const ALL_MODULES = [
     icon: '💊',
     alwaysOn: false,
     defaultOn: true,
+    registerSubTab: false,
     desc: 'Medicinlista med FASS-länkar och markering i grafer',
   },
   {
     id: 'diary',
-    label: 'Dagbok',
+    label: 'Tarm',
     icon: '📔',
     alwaysOn: false,
     defaultOn: false,
-    desc: 'Tarmdagbok med Bristolskalan',
+    registerSubTab: true,
+    desc: 'Tarmdagbok med Bristolskalan (visas under Registrera)',
   },
   {
     id: 'micturition',
-    label: 'Miktionslista',
+    label: 'Miktion',
     icon: '🫧',
     alwaysOn: false,
     defaultOn: false,
-    desc: 'Miktionslista för inkontinensutredning och remisser',
+    registerSubTab: true,
+    desc: 'Miktionslista för inkontinensutredning (visas under Registrera)',
   },
   {
     id: 'pain',
@@ -58,7 +65,8 @@ export const ALL_MODULES = [
     icon: '🩻',
     alwaysOn: false,
     defaultOn: false,
-    desc: 'Smärtdagbok med NRS/PEG-skala, lokalisering och tidslinjegraf',
+    registerSubTab: true,
+    desc: 'Smärtdagbok med PEG-skala och lokalisering (visas under Registrera)',
   },
   {
     id: 'info',
@@ -66,12 +74,19 @@ export const ALL_MODULES = [
     icon: '📖',
     alwaysOn: false,
     defaultOn: true,
+    registerSubTab: false,
     desc: 'Hälsoinformation och kunskapsbank',
   },
 ]
 
 export const DEFAULT_ENABLED_IDS = ALL_MODULES.filter(m => m.defaultOn).map(m => m.id)
 
+// Only modules that appear in the bottom navbar (not register sub-tabs)
 export function buildEnabledTabs(enabledIds) {
-  return ALL_MODULES.filter(m => enabledIds.includes(m.id))
+  return ALL_MODULES.filter(m => enabledIds.includes(m.id) && !m.registerSubTab)
+}
+
+// Modules that appear as Register sub-tabs
+export function buildRegisterSubTabs(enabledIds) {
+  return ALL_MODULES.filter(m => enabledIds.includes(m.id) && m.registerSubTab)
 }
