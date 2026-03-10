@@ -13,16 +13,17 @@ const ARB_ACE_HKTZ = ['Losartan', 'Valsartan', 'Kandesartan', 'Irbesartan', 'Olm
   'Losartan/Hydroklortiazid', 'Valsartan/Hydroklortiazid', 'Kandesartan/Hydroklortiazid']
 const ARB_ACE = ['Losartan', 'Valsartan', 'Kandesartan', 'Irbesartan', 'Olmesartan', 'Telmisartan',
   'Enalapril', 'Ramipril', 'Lisinopril', 'Perindopril']
-const NSAIDS = ['Ibuprofen', 'Naproxen', 'Diklofenak', 'Piroxikam', 'Indometacin', 'Celecoxib', 'Etoricoxib', 'Meloxikam']
+const NSAIDS = ['ibuprofen', 'naproxen', 'diklofenak', 'piroxikam', 'indometacin', 'celecoxib', 'etoricoxib', 'meloxikam', 'ipren', 'voltaren', 'pronaxen']
 
 function getMedWarnings(medications, latestEgfr, latestCreatinine) {
   const names = medications.map(m => m.name)
+  const namesLower = names.map(n => n.toLowerCase())
   const warnings = []
-  const hasMetformin = names.some(n => n.toLowerCase().includes('metformin'))
-  const hasArbOrHktz = names.some(n => ARB_ACE_HKTZ.some(a => n.includes(a)))
-  const hasArbOrAce = names.some(n => ARB_ACE.some(a => n.includes(a)))
-  const hasNsaid = names.some(n => NSAIDS.some(s => n.includes(s)))
-  const hasDehydrationMed = names.some(n => DEHYDRATION_MEDS.some(d => n.includes(d)))
+  const hasMetformin = namesLower.some(n => n.includes('metformin'))
+  const hasArbOrHktz = namesLower.some(n => ARB_ACE_HKTZ.some(a => n.includes(a.toLowerCase())))
+  const hasArbOrAce = namesLower.some(n => ARB_ACE.some(a => n.includes(a.toLowerCase())))
+  const hasNsaid = namesLower.some(n => NSAIDS.some(s => n.includes(s)))
+  const hasDehydrationMed = namesLower.some(n => DEHYDRATION_MEDS.some(d => n.includes(d.toLowerCase())))
 
   if (hasDehydrationMed) {
     warnings.push({
@@ -66,10 +67,10 @@ function getMedWarnings(medications, latestEgfr, latestCreatinine) {
 
   if (hasNsaid && hasArbOrAce) {
     warnings.push({
-      type: 'info',
-      icon: 'ℹ',
-      title: 'NSAID + ARB/ACE-hämmare – var uppmärksam',
-      text: 'Regelbunden användning av NSAID-preparat (t.ex. Ibuprofen, Naproxen) tillsammans med ARB eller ACE-hämmare kan minska den blodtryckssänkande effekten och öka risken för njurpåverkan. Prata med din läkare om du behöver smärtstillande regelbundet.',
+      type: 'warn',
+      icon: '⚠️',
+      title: 'NSAID + ARB/ACE-hämmare – viktigt att känna till',
+      text: 'NSAID-tabletter såsom ibuprofen och naproxen kan tillfälligt försämra njurfunktionen när de tas tillsammans med ARB/ACE-hämmare.\n\nOm du behöver smärtlindring är paracetamol förstahandsval. Om du någon gång tar NSAID-preparat bör det vara låg dos och bara några få dagar, och du ska undvika det helt om du är magsjuk, uttorkad eller har feber med dåligt vätskeintag.',
       link: 'https://www.1177.se'
     })
   }
@@ -93,7 +94,8 @@ export default function MedicationsView({ onDataChange }) {
       name: '',
       startDate: new Date().toISOString().slice(0, 10),
       dose: '',
-      note: ''
+      note: '',
+      prn: false,
     }
   }
 
@@ -128,7 +130,7 @@ export default function MedicationsView({ onDataChange }) {
   }
 
   function handleEdit(med) {
-    setForm({ name: med.name, startDate: med.startDate, dose: med.dose || '', note: med.note || '' })
+    setForm({ name: med.name, startDate: med.startDate, dose: med.dose || '', note: med.note || '', prn: med.prn || false })
     setPickerDrug(findDrug(med.name))
     setEditId(med.id); setShowForm(true)
     setSuggestions([]); setShowSuggestions(false)
@@ -169,7 +171,7 @@ export default function MedicationsView({ onDataChange }) {
             <button className="btn-add" onClick={() => setShowForm(true)}>+ Lägg till</button>
           )}
         </div>
-        <p className="card-desc">Mediciner visas som markörer i blodtrycks-, kolesterol- och sockergrafen.</p>
+        <p className="card-desc">Mediciner visas som markörer i relaterade grafer (blodtryck, kolesterol, socker, vikt, smärta, tarm).</p>
       </div>
 
       {showForm && (
@@ -270,6 +272,16 @@ export default function MedicationsView({ onDataChange }) {
                 className="form-input"
               />
             </div>
+            <div className="form-group">
+              <label className="toggle-label" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.prn}
+                  onChange={e => setForm(f => ({ ...f, prn: e.target.checked }))}
+                />
+                Vid behov (v.b.) – tas inte regelbundet
+              </label>
+            </div>
             <div className="form-actions">
               <button type="submit" className="btn-primary">
                 {editId ? 'Spara ändringar' : 'Lägg till'}
@@ -290,7 +302,7 @@ export default function MedicationsView({ onDataChange }) {
                 <span className="med-warning-icon">{w.icon}</span>
                 <span className="med-warning-title">{w.title}</span>
               </div>
-              <p className="med-warning-text">{w.text}</p>
+              <p className="med-warning-text" style={{ whiteSpace: 'pre-line' }}>{w.text}</p>
               <a href={w.link} target="_blank" rel="noopener noreferrer" className="med-warning-link">
                 Läs mer på 1177 ↗
               </a>
@@ -314,9 +326,10 @@ export default function MedicationsView({ onDataChange }) {
                   <div className="med-main">
                     <span className="med-name">{med.name}</span>
                     {med.dose && <span className="med-dose">{med.dose}</span>}
+                    {med.prn && <span className="med-prn-badge">v.b.</span>}
                   </div>
                   <div className="med-meta">
-                    <span className="med-date">Startdatum: {formatDateSv(med.startDate)}</span>
+                    <span className="med-date">{med.prn ? 'Tillagd: ' : 'Startdatum: '}{formatDateSv(med.startDate)}</span>
                     {med.note && <span className="med-note">📝 {med.note}</span>}
                   </div>
                   <div className="med-actions">

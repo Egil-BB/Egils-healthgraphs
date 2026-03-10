@@ -8,10 +8,10 @@ import annotationPlugin from 'chartjs-plugin-annotation'
 import { Line, Bar } from 'react-chartjs-2'
 import {
   getAllMeasurements, getAllMedications, getAllLabs, getAllWeights,
-  getAllLifestyle, getProfile, getAllGutEntries
+  getAllLifestyle, getProfile, getAllGutEntries, getAllPainEntries
 } from '../db/db'
 import { getDailyAverages, getMovingAverage, fillDateGaps, daysAgo, formatDateSv } from '../utils/bp'
-import { getScoreLabel } from '../utils/lifestyle'
+import { getScoreLabel, LIFESTYLE_CATEGORIES } from '../utils/lifestyle'
 import { getMedGraphTargets } from '../utils/medications'
 
 ChartJS.register(
@@ -26,6 +26,7 @@ const GRAPH_TABS = [
   { id: 'weight', label: 'Vikt' },
   { id: 'lifestyle', label: 'Levnadsvanor' },
   { id: 'gut', label: 'Tarm' },
+  { id: 'pain', label: 'Smärta' },
   { id: 'combined', label: 'Kombinerad' },
 ]
 
@@ -66,10 +67,20 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
   const annotations = {}
   const medColors = ['#7c3aed', '#b45309', '#0f766e', '#be185d', '#1d4ed8']
 
-  // Only BP meds on this graph
-  medications.filter(med => getMedGraphTargets(med.name).includes('bp')).forEach((med, i) => {
+  // Only BP meds on this graph – stagger labels if same x position
+  const bpMeds = medications.filter(med => getMedGraphTargets(med.name).includes('bp'))
+  const xIndexCount = {}
+  bpMeds.forEach(med => {
+    const idx = filled.findIndex(d => d.date >= med.startDate)
+    if (idx >= 0) xIndexCount[idx] = (xIndexCount[idx] || 0) + 1
+  })
+  const xIndexSeen = {}
+  bpMeds.forEach((med, i) => {
     const idx = filled.findIndex(d => d.date >= med.startDate)
     if (idx < 0) return
+    xIndexSeen[idx] = (xIndexSeen[idx] || 0)
+    const stagger = xIndexSeen[idx]
+    xIndexSeen[idx]++
     const medLabel = med.dose ? `${med.name} ${med.dose}` : med.name
     annotations[`med_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
@@ -77,7 +88,8 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
       label: {
         display: true, content: medLabel, position: 'end',
         backgroundColor: medColors[i % medColors.length], color: 'white',
-        font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10
+        font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4,
+        yAdjust: 4 + stagger * 28
       }
     }
   })
@@ -186,13 +198,17 @@ function CholesterolGraph({ labs, medications }) {
   const medColors = ['#7c3aed', '#b45309', '#0f766e']
 
   const annotations = {}
+  const cholXSeen = {}
   cholMeds.forEach((med, i) => {
     const idx = points.findIndex(p => p.date >= med.startDate)
     if (idx < 0) return
+    cholXSeen[idx] = (cholXSeen[idx] || 0)
+    const stagger = cholXSeen[idx]
+    cholXSeen[idx]++
     annotations[`chol_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10 }
+      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 4 + stagger * 28 }
     }
   })
   annotations.refLine = { type: 'line', yMin: 3.4, yMax: 3.4, borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [5, 5], label: { display: true, content: '3,4', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
@@ -277,13 +293,17 @@ function GlucoseGraph({ labs, medications }) {
   const glucoseMeds = medications.filter(m => getMedGraphTargets(m.name).includes('glucose'))
   const medColors = ['#7c3aed', '#b45309', '#0f766e', '#be185d']
   const annotations = {}
+  const gluXSeen = {}
   glucoseMeds.forEach((med, i) => {
     const idx = allDates.findIndex(d => d >= med.startDate)
     if (idx < 0) return
+    gluXSeen[idx] = (gluXSeen[idx] || 0)
+    const stagger = gluXSeen[idx]
+    gluXSeen[idx]++
     annotations[`glu_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10 }
+      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 4 + stagger * 28 }
     }
   })
   if (glucosePoints.length > 0) {
@@ -350,13 +370,17 @@ function WeightGraph({ weights, heightCm, medications }) {
   const weightMeds = medications.filter(m => getMedGraphTargets(m.name).includes('weight'))
   const medColors = ['#7c3aed', '#b45309', '#0f766e', '#be185d']
   const annotations = {}
+  const wtXSeen = {}
   weightMeds.forEach((med, i) => {
     const idx = sorted.findIndex(w => w.date >= med.startDate)
     if (idx < 0) return
+    wtXSeen[idx] = (wtXSeen[idx] || 0)
+    const stagger = wtXSeen[idx]
+    wtXSeen[idx]++
     annotations[`wt_${i}`] = {
       type: 'line', xMin: idx, xMax: idx,
       borderColor: medColors[i % medColors.length], borderWidth: 2, borderDash: [6, 3],
-      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: -10 }
+      label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 4 + stagger * 28 }
     }
   })
 
@@ -439,6 +463,33 @@ function WeightGraph({ weights, heightCm, medications }) {
 
 // ── Lifestyle score graph ─────────────────────────────────────────────────────
 
+// Calculate per-category scores from saved answers
+function getCategoryScores(entry) {
+  if (!entry.answers) return {}
+  const result = {}
+  for (const cat of LIFESTYLE_CATEGORIES) {
+    let catScore = 0
+    for (const q of cat.questions) {
+      if (q.scoreless) continue
+      const isVisible = !q.showIf || q.showIf(entry.answers)
+      if (!isVisible) { catScore += q.autoScoreWhenHidden ?? 0; continue }
+      const opt = q.options.find(o => o.value === entry.answers[q.id])
+      if (opt) catScore += opt.score
+    }
+    result[cat.id] = { score: catScore, maxScore: cat.maxScore, title: cat.title, icon: cat.icon }
+  }
+  return result
+}
+
+const CAT_COLORS = {
+  tobacco: '#374151',
+  alcohol: '#7c3aed',
+  activity: '#0891b2',
+  sleep: '#0f766e',
+  food: '#16a34a',
+  stress: '#ea580c',
+}
+
 function LifestyleGraph({ lifestyle }) {
   if (lifestyle.length === 0) {
     return <EmptyState icon="🏃" text="Inga levnadsvanor registrerade. Fyll i enkäten under Registrera → Levnadsvanor." />
@@ -447,26 +498,66 @@ function LifestyleGraph({ lifestyle }) {
   const sorted = [...lifestyle].sort((a, b) => a.date.localeCompare(b.date))
   const labels = sorted.map(e => dateLabel(e.date, true))
   const scores = sorted.map(e => e.score)
-  const colors = scores.map(s => getScoreLabel(s).color)
 
-  const datasets = [{
-    label: 'Levnadspoäng',
-    data: scores,
-    backgroundColor: colors.map(c => c + 'cc'),
-    borderColor: colors,
-    borderWidth: 2,
-    borderRadius: 6,
-  }]
+  // Total score line
+  const datasets = [
+    {
+      label: 'Totalt',
+      data: scores,
+      borderColor: '#1d4ed8',
+      backgroundColor: 'rgba(29,78,216,0.08)',
+      borderWidth: 3,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      tension: 0.3,
+      fill: false,
+    }
+  ]
+
+  // Per-category lines (normalized to 0-100 scale for readability)
+  for (const cat of LIFESTYLE_CATEGORIES) {
+    const catData = sorted.map(e => {
+      const cs = getCategoryScores(e)
+      const c = cs[cat.id]
+      if (!c) return null
+      return Math.round((c.score / c.maxScore) * 100)
+    })
+    if (catData.some(v => v !== null)) {
+      datasets.push({
+        label: `${cat.icon} ${cat.title}`,
+        data: catData,
+        borderColor: CAT_COLORS[cat.id] || '#64748b',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [5, 3],
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+        yAxisID: 'cat',
+      })
+    }
+  }
 
   const options = {
     responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: item => `${item.raw}p – ${getScoreLabel(item.raw).label}` } }
+      legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 11 }, padding: 8 } },
+      tooltip: {
+        callbacks: {
+          label: item => item.datasetIndex === 0
+            ? `Totalt: ${item.raw}p – ${getScoreLabel(item.raw).label}`
+            : `${item.dataset.label}: ${item.raw}%`
+        }
+      },
+      annotation: { annotations: {} }
     },
     scales: {
       x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
-      y: { min: 0, max: 100, title: { display: true, text: 'Poäng', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }
+      y: { min: 0, max: 100, title: { display: true, text: 'Totalpoäng', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      cat: { position: 'right', min: 0, max: 100, title: { display: true, text: '% av max/kategori', font: { size: 11 } }, ticks: { font: { size: 11 } }, grid: { drawOnChartArea: false } }
     }
   }
 
@@ -481,7 +572,10 @@ function LifestyleGraph({ lifestyle }) {
           Senast: {latest.score}p – {latestLabel.label}
         </span>
       </div>
-      <div className="chart-wrapper"><Bar data={{ labels, datasets }} options={options} /></div>
+      <p className="card-desc" style={{ marginBottom: 8 }}>
+        Heldragen = totalpoäng (0–100). Streckade = andel av maxpoäng per kategori.
+      </p>
+      <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
     </div>
   )
 }
@@ -504,12 +598,16 @@ function buildGutHeatmapMonths(entries, months = 3) {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
       const dayEntries = entries.filter(e => e.date === dateStr)
-      // Most common Bristol type
+      // Most common Bristol type (supports both bristolType and bristolTypes array)
       let dominantType = null
       if (dayEntries.length > 0) {
         const freq = {}
-        dayEntries.forEach(e => { if (e.bristolType) freq[e.bristolType] = (freq[e.bristolType] || 0) + 1 })
-        dominantType = parseInt(Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0])
+        dayEntries.forEach(e => {
+          const types = e.bristolTypes?.length ? e.bristolTypes : (e.bristolType ? [e.bristolType] : [])
+          types.forEach(t => { if (t) freq[t] = (freq[t] || 0) + 1 })
+        })
+        const top = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]
+        if (top) dominantType = parseInt(top[0])
       }
       days.push({ date: dateStr, dominantType, count: dayEntries.length, entries: dayEntries })
     }
@@ -569,22 +667,33 @@ function GutHeatmap({ gutEntries }) {
         </div>
       ))}
       {popup && (
-        <div className="pain-popup-overlay" onClick={() => setPopup(null)}>
-          <div className="pain-popup" onClick={e => e.stopPropagation()}>
+        <div className="diary-popup-overlay" onClick={() => setPopup(null)}>
+          <div className="diary-popup" onClick={e => e.stopPropagation()}>
             <button className="pain-popup-close" onClick={() => setPopup(null)}>✕</button>
             <div className="pain-popup-date">{popup.date}</div>
-            {popup.entries.map((e, i) => (
-              <div key={i} className="pain-popup-entry">
-                <span style={{ color: BRISTOL_COLORS[e.bristolType] || '#555' }}>
-                  Bristol {e.bristolType}
-                </span>
-                <span style={{ color: '#666', fontSize: 12 }}>
-                  {BRISTOL_LABELS[e.bristolType]}
-                </span>
-                {e.bowelCount > 0 && <span>{e.bowelCount} tömning(ar)</span>}
-              </div>
-            ))}
-            <button className="btn-secondary" style={{ marginTop: 8 }} onClick={() => setPopup(null)}>Stäng</button>
+            {popup.entries.map((e, i) => {
+              const bType = e.bristolType || e.bristolTypes?.[0]
+              const isFlush = e.bristolTypes?.length > 0 || e.bristolType
+              const hasMeds = e.medications && Object.values(e.medications).some(v => v > 0)
+              return (
+                <div key={i} className="pain-popup-entry" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 8, marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{e.time || ''}</span>
+                  {isFlush && bType && (
+                    <span style={{ color: BRISTOL_COLORS[bType] || '#555', marginLeft: 6 }}>
+                      Bristol {bType} – {BRISTOL_LABELS[bType]}
+                    </span>
+                  )}
+                  {hasMeds && (
+                    <div style={{ color: '#7c3aed', fontSize: 12, marginTop: 2 }}>
+                      💊 {Object.entries(e.medications).filter(([, v]) => v > 0).map(([k, v]) => v > 1 ? `${k} ×${v}` : k).join(', ')}
+                    </div>
+                  )}
+                  {e.pain > 0 && <div style={{ fontSize: 12, color: '#64748b' }}>Smärta: {['Ingen','Mild','Måttlig','Svår'][e.pain]}</div>}
+                  {(e.notes || e.note) && <div style={{ fontSize: 12, color: '#64748b' }}>📝 {e.notes || e.note}</div>}
+                </div>
+              )
+            })}
+            <button className="btn-secondary" style={{ marginTop: 4 }} onClick={() => setPopup(null)}>Stäng</button>
           </div>
         </div>
       )}
@@ -609,14 +718,24 @@ function GutGraph({ gutEntries }) {
     return <EmptyState icon="📔" text="Inga tarmdagboksposter. Registrera under Registrera → Tarm." />
   }
 
-  const sorted = [...gutEntries].sort((a, b) => a.date.localeCompare(b.date))
-  const last90 = sorted.filter(e => e.date >= daysAgo(90))
-  const display = last90.length > 0 ? last90 : sorted.slice(-20)
+  const sorted = [...gutEntries].sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))
+  // Only entries with actual bowel movements (not medication-only entries)
+  const flushEntries = sorted.filter(e => e.bristolType || (e.bristolTypes && e.bristolTypes.length > 0))
+  const last90 = flushEntries.filter(e => e.date >= daysAgo(90))
+  const display = last90.length > 0 ? last90 : flushEntries.slice(-20)
 
-  const labels = display.map(e => dateLabel(e.date, true))
-  const bristolData = display.map(e => e.bristolType)
-  const pointColors = display.map(e => BRISTOL_COLORS[e.bristolType] || '#64748b')
-  const countData = display.map(e => e.bowelCount)
+  const labels = display.map(e => {
+    const base = dateLabel(e.date, true)
+    return e.time ? `${base} ${e.time}` : base
+  })
+  // Each entry is one flush – use bristolType or first of bristolTypes
+  const bristolData = display.map(e => e.bristolType || e.bristolTypes?.[0] || null)
+  const pointColors = display.map(e => {
+    const t = e.bristolType || e.bristolTypes?.[0]
+    return BRISTOL_COLORS[t] || '#64748b'
+  })
+  // Count medication days (only entries with meds on same date)
+  const countData = display.map(() => null) // no longer used, kept for dataset shape
 
   const options = {
     responsive: true, maintainAspectRatio: false,
@@ -637,9 +756,8 @@ function GutGraph({ gutEntries }) {
       }
     },
     scales: {
-      x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
-      y: { min: 0.5, max: 7.5, title: { display: true, text: 'Bristol-typ', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
-      count: { position: 'right', min: 0, max: 8, title: { display: true, text: 'Tömn/dag', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { drawOnChartArea: false } }
+      x: { ticks: { font: { size: 11 }, maxRotation: 30, maxTicksLimit: 10 }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      y: { min: 0.5, max: 7.5, title: { display: true, text: 'Bristol-typ', font: { size: 11 } }, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }
     }
   }
 
@@ -667,7 +785,7 @@ function GutGraph({ gutEntries }) {
 
       {gutView === 'timeline' && (
         <div className="card chart-card">
-          <p className="card-desc" style={{ marginBottom: 8 }}>Punktfärg = Bristol-typ · Streck = antal tömningar/dag. Typ 3–4 = optimal.</p>
+          <p className="card-desc" style={{ marginBottom: 8 }}>Varje punkt = en tömning. Färg = Bristol-typ. Typ 3–4 = optimal.</p>
           <div className="chart-wrapper">
             <Line
               data={{
@@ -684,18 +802,6 @@ function GutGraph({ gutEntries }) {
                     pointHoverRadius: 10,
                     showLine: false,
                     tension: 0,
-                  },
-                  {
-                    label: 'Tömningar/dag',
-                    data: countData,
-                    borderColor: '#0891b2',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderDash: [5, 4],
-                    pointRadius: 3,
-                    pointBackgroundColor: '#0891b2',
-                    tension: 0.2,
-                    yAxisID: 'count'
                   }
                 ]
               }}
@@ -709,6 +815,229 @@ function GutGraph({ gutEntries }) {
               </span>
             ))}
           </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Pain graph ────────────────────────────────────────────────────────────────
+
+const PAIN_BODY_ZONES = [
+  { id: 'headneck', label: 'Huvud/nacke' }, { id: 'chestL', label: 'Bröst vänster' },
+  { id: 'chestR', label: 'Bröst höger' }, { id: 'upperBack', label: 'Övre rygg' },
+  { id: 'abdomen', label: 'Mage' }, { id: 'lowerBack', label: 'Nedre rygg' },
+  { id: 'pelvis', label: 'Bäcken/höft' }, { id: 'shoulderL', label: 'Vänster axel' },
+  { id: 'shoulderR', label: 'Höger axel' }, { id: 'armL', label: 'Vänster arm' },
+  { id: 'armR', label: 'Höger arm' }, { id: 'legL', label: 'Vänster ben' },
+  { id: 'legR', label: 'Höger ben' }, { id: 'footL', label: 'Vänster fot' },
+  { id: 'footR', label: 'Höger fot' },
+]
+
+function nrsHeatColor(nrs) {
+  if (nrs === null) return '#EEEEEE'
+  if (nrs <= 3) return '#A5D6A7'
+  if (nrs <= 6) return '#FFF176'
+  if (nrs <= 8) return '#FFAB40'
+  return '#EF5350'
+}
+
+function buildPainHeatmapMonths(entries, months = 3) {
+  const today = new Date()
+  const result = []
+  for (let m = months - 1; m >= 0; m--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - m, 1)
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    const label = d.toLocaleString('sv-SE', { month: 'long', year: 'numeric' })
+    const firstDow = new Date(year, month, 1).getDay()
+    const startPad = (firstDow + 6) % 7
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const days = []
+    for (let i = 0; i < startPad; i++) days.push(null)
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const dayEntries = entries.filter(e => e.date === dateStr)
+      const nrsEntries = dayEntries.filter(e => e.nrs != null)
+      const maxNrs = nrsEntries.length ? Math.max(...nrsEntries.map(e => e.nrs)) : null
+      const hasMeds = dayEntries.some(e => e.medications && Object.values(e.medications).some(v => v > 0))
+      days.push({ date: dateStr, maxNrs, hasMeds, entries: dayEntries })
+    }
+    result.push({ label, days })
+  }
+  return result
+}
+
+function PainHeatmap({ entries }) {
+  const [popup, setPopup] = useState(null)
+  const months = buildPainHeatmapMonths(entries, 3)
+  const DOW_LABELS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
+
+  return (
+    <div className="card chart-card">
+      <div className="chol-header">
+        <span className="card-title">Smärtkalender (3 månader)</span>
+        <span style={{ color: '#64748b', fontSize: 13 }}>Färg = max NRS</span>
+      </div>
+      <div className="chart-legend-zones" style={{ flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+        {[null, 2, 5, 7, 9].map((v, i) => (
+          <span key={i} className="zone-chip" style={{ background: nrsHeatColor(v) + '80', color: '#374151' }}>
+            ■ {v === null ? 'Ingen' : v <= 3 ? '1–3' : v <= 6 ? '4–6' : v <= 8 ? '7–8' : '9–10'}
+          </span>
+        ))}
+      </div>
+      {months.map((mo, mi) => (
+        <div key={mi} className="pain-month">
+          <div className="pain-month-label">{mo.label}</div>
+          <div className="pain-month-grid">
+            {DOW_LABELS.map(l => <div key={l} className="pain-dow-label">{l}</div>)}
+            {mo.days.map((day, di) => (
+              day === null
+                ? <div key={`pad-${di}`} className="pain-day pain-day-empty" />
+                : (
+                  <div
+                    key={day.date}
+                    className="pain-day"
+                    style={{ background: nrsHeatColor(day.maxNrs), cursor: day.entries.length ? 'pointer' : 'default' }}
+                    onClick={() => day.entries.length && setPopup(day)}
+                    title={day.maxNrs !== null ? `NRS ${day.maxNrs}` : ''}
+                  >
+                    {day.hasMeds && <span className="pain-day-dot" />}
+                  </div>
+                )
+            ))}
+          </div>
+        </div>
+      ))}
+      {popup && (
+        <div className="diary-popup-overlay" onClick={() => setPopup(null)}>
+          <div className="diary-popup" onClick={e => e.stopPropagation()}>
+            <button className="pain-popup-close" onClick={() => setPopup(null)}>✕</button>
+            <div className="pain-popup-date">{popup.date}</div>
+            {popup.entries.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map((e, i) => {
+              const locLabels = PAIN_BODY_ZONES.filter(z => e.locations?.includes(z.id)).map(z => z.label)
+              const hasMeds = e.medications && Object.values(e.medications).some(v => v > 0)
+              const nrsColor = e.nrs <= 3 ? '#16a34a' : e.nrs <= 6 ? '#ca8a04' : '#dc2626'
+              return (
+                <div key={i} className="pain-popup-entry" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 8, marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{e.time || ''}</span>
+                  {e.nrs != null && (
+                    <span style={{ color: nrsColor, marginLeft: 6 }}>NRS {e.nrs}</span>
+                  )}
+                  {e.pegScore != null && (
+                    <span style={{ color: '#0891b2', marginLeft: 6 }}>PEG {e.pegScore}</span>
+                  )}
+                  {e.nrs == null && <span style={{ color: '#7c3aed', marginLeft: 6 }}>💊 Behovsmedicin</span>}
+                  {hasMeds && (
+                    <div style={{ color: '#7c3aed', fontSize: 12, marginTop: 2 }}>
+                      💊 {Object.entries(e.medications).filter(([, v]) => v > 0).map(([k, v]) => v > 1 ? `${k} ×${v}` : k).join(', ')}
+                    </div>
+                  )}
+                  {locLabels.length > 0 && <div style={{ fontSize: 12, color: '#64748b' }}>📍 {locLabels.join(', ')}</div>}
+                </div>
+              )
+            })}
+            <button className="btn-secondary" style={{ marginTop: 4 }} onClick={() => setPopup(null)}>Stäng</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PainGraph({ painEntries }) {
+  const [painView, setPainView] = useState('timeline')
+  const [timeRange, setTimeRange] = useState('30d')
+
+  if (painEntries.length === 0) {
+    return <EmptyState icon="🩻" text="Inga smärtregistreringar. Registrera under Registrera → Smärta." />
+  }
+
+  function filterByRange(entries, range) {
+    const today = new Date()
+    let cutoff = null
+    if (range === '7d') { cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 7) }
+    else if (range === '30d') { cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 30) }
+    else if (range === '3m') { cutoff = new Date(today); cutoff.setMonth(cutoff.getMonth() - 3) }
+    if (!cutoff) return entries
+    const cutStr = cutoff.toISOString().slice(0, 10)
+    return entries.filter(e => e.date >= cutStr)
+  }
+
+  const sorted = [...painEntries].sort((a, b) => a.date.localeCompare(b.date))
+  const filtered = filterByRange(sorted, timeRange)
+
+  // Group by date for chart
+  const byDate = {}
+  for (const e of filtered) {
+    if (!byDate[e.date]) byDate[e.date] = []
+    byDate[e.date].push(e)
+  }
+  const dates = Object.keys(byDate).sort().filter(d => byDate[d].some(e => e.nrs != null))
+  const nrsData = dates.map(d => Math.max(...byDate[d].filter(e => e.nrs != null).map(e => e.nrs)))
+  const pegData = dates.map(d => {
+    const arr = byDate[d].filter(e => e.pegScore != null)
+    if (!arr.length) return null
+    return Math.round(arr.reduce((s, e) => s + e.pegScore, 0) / arr.length * 10) / 10
+  })
+  const medDates = dates.filter(d => byDate[d].some(e => e.medications && Object.values(e.medications).some(v => v > 0)))
+
+  const data = {
+    labels: dates.map(d => d.slice(5)),
+    datasets: [
+      { label: 'NRS (intensitet)', data: nrsData, borderColor: '#ef4444', backgroundColor: '#ef444420', borderWidth: 2.5, tension: 0.3, pointRadius: 4 },
+      { label: 'PEG (medelvärde)', data: pegData, borderColor: '#0ea5e9', backgroundColor: '#0ea5e920', borderWidth: 1.5, borderDash: [5, 3], tension: 0.3, pointRadius: 3, spanGaps: true }
+    ]
+  }
+
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { font: { size: 12 } } },
+      tooltip: {
+        callbacks: {
+          afterBody: items => {
+            const date = dates[items[0]?.dataIndex]
+            if (date && medDates.includes(date)) return ['💊 Läkemedel taget']
+            return []
+          }
+        }
+      },
+      annotation: { annotations: {} }
+    },
+    scales: {
+      y: { min: 0, max: 10, grid: { color: '#f0f0f0' } },
+      x: { grid: { color: '#f0f0f0' } }
+    }
+  }
+
+  return (
+    <>
+      <div className="card" style={{ paddingBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="card-title">Smärtdagbok</span>
+          <div className="pain-chart-tabs">
+            <button className={`pain-tab-btn ${painView === 'timeline' ? 'active' : ''}`} onClick={() => setPainView('timeline')}>Tidslinje</button>
+            <button className={`pain-tab-btn ${painView === 'heatmap' ? 'active' : ''}`} onClick={() => setPainView('heatmap')}>Kalender</button>
+          </div>
+        </div>
+      </div>
+
+      {painView === 'heatmap' && <PainHeatmap entries={sorted} />}
+
+      {painView === 'timeline' && (
+        <div className="card chart-card">
+          <div className="pain-range-btns">
+            {['7d', '30d', '3m', 'all'].map(r => (
+              <button key={r} className={`pain-range-btn ${timeRange === r ? 'active' : ''}`} onClick={() => setTimeRange(r)}>
+                {r === '7d' ? '7 dagar' : r === '30d' ? '30 dagar' : r === '3m' ? '3 mån' : 'Allt'}
+              </button>
+            ))}
+          </div>
+          <div className="chart-wrapper"><Line data={data} options={options} /></div>
+          {medDates.length > 0 && (
+            <div className="pain-med-dates">💊 Läkemedel: {medDates.map(d => d.slice(5)).join(', ')}</div>
+          )}
         </div>
       )}
     </>
@@ -878,15 +1207,16 @@ export default function GraphView({ refreshKey }) {
   const [weights, setWeights] = useState([])
   const [lifestyle, setLifestyle] = useState([])
   const [gutEntries, setGutEntries] = useState([])
+  const [painEntries, setPainEntries] = useState([])
   const [heightCm, setHeightCm] = useState(null)
   const [subTab, setSubTab] = useState('bp')
   const [bpPeriod, setBpPeriod] = useState(1)
 
   useEffect(() => {
     async function load() {
-      const [ms, meds, ls, ws, lf, gut, profile] = await Promise.all([
+      const [ms, meds, ls, ws, lf, gut, pain, profile] = await Promise.all([
         getAllMeasurements(), getAllMedications(), getAllLabs(),
-        getAllWeights(), getAllLifestyle(), getAllGutEntries(), getProfile('patientProfile')
+        getAllWeights(), getAllLifestyle(), getAllGutEntries(), getAllPainEntries(), getProfile('patientProfile')
       ])
       setMeasurements(ms.sort((a, b) => a.timestamp.localeCompare(b.timestamp)))
       setMedications(meds.sort((a, b) => a.startDate.localeCompare(b.startDate)))
@@ -894,6 +1224,7 @@ export default function GraphView({ refreshKey }) {
       setWeights(ws)
       setLifestyle(lf)
       setGutEntries(gut)
+      setPainEntries(pain.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')))
       if (profile?.height) setHeightCm(parseFloat(profile.height))
     }
     load()
@@ -930,6 +1261,9 @@ export default function GraphView({ refreshKey }) {
       )}
       {subTab === 'gut' && (
         <GutGraph gutEntries={gutEntries} />
+      )}
+      {subTab === 'pain' && (
+        <PainGraph painEntries={painEntries} />
       )}
       {subTab === 'combined' && (
         <CombinedGraph measurements={measurements} labs={labs} weights={weights} lifestyle={lifestyle} heightCm={heightCm} />
