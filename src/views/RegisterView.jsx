@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { addMeasurement, getAllMeasurements, deleteMeasurement } from '../db/db'
 import {
-  classifyBP, getBPColor, getBPBg, isCrisisBP,
   getTrendFeedback, getTodaySummary,
-  formatTimeSv, TIME_OF_DAY_LABELS, daysAgo, getReliabilityStars
+  formatTimeSv, TIME_OF_DAY_LABELS, daysAgo
 } from '../utils/bp'
 
 function getPeriodAvg(measurements, days) {
@@ -90,13 +89,6 @@ export default function RegisterView({ onDataChange, refreshKey }) {
   const avg14 = getPeriodAvg(measurements, 14)
   const avg30 = getPeriodAvg(measurements, 30)
 
-  const category = classifyBP(Number(sys), Number(dia))
-  const bpColor = getBPColor(Number(sys), Number(dia))
-  const bpBg = getBPBg(Number(sys), Number(dia))
-  const crisis = isCrisisBP(Number(sys), Number(dia))
-
-  const showMeasureTip = trend && trend.recentAvgSys < 130 && trend.recentAvgDia < 80
-
   const sysFill = `${((sys - 70) / 150) * 100}%`
   const diaFill = `${((dia - 40) / 100) * 100}%`
 
@@ -110,10 +102,10 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             <div className="slider-group">
               <div className="slider-label-row">
                 <label className="slider-lbl">Systoliskt (övre)</label>
-                <span className="slider-val" style={{ color: bpColor }}>{sys} <span className="slider-unit-sm">mmHg</span></span>
+                <span className="slider-val">{sys} <span className="slider-unit-sm">mmHg</span></span>
               </div>
               <div className="slider-track-wrap">
-                <div className="slider-track-fill" style={{ width: sysFill, background: bpColor }} />
+                <div className="slider-track-fill" style={{ width: sysFill }} />
                 <input
                   type="range" min="70" max="220" step="1"
                   value={sys}
@@ -128,10 +120,10 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             <div className="slider-group">
               <div className="slider-label-row">
                 <label className="slider-lbl">Diastoliskt (undre)</label>
-                <span className="slider-val" style={{ color: bpColor }}>{dia} <span className="slider-unit-sm">mmHg</span></span>
+                <span className="slider-val">{dia} <span className="slider-unit-sm">mmHg</span></span>
               </div>
               <div className="slider-track-wrap">
-                <div className="slider-track-fill" style={{ width: diaFill, background: bpColor }} />
+                <div className="slider-track-fill" style={{ width: diaFill }} />
                 <input
                   type="range" min="40" max="140" step="1"
                   value={dia}
@@ -147,19 +139,10 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             )}
           </div>
 
-          {/* BP classification */}
-          <div className="bp-preview" style={{ background: bpBg, borderColor: bpColor }}>
-            <span className="bp-preview-value" style={{ color: bpColor }}>{sys}/{dia} mmHg</span>
-            <span className="bp-preview-label" style={{ color: bpColor }}>{category.label}</span>
+          {/* BP value preview */}
+          <div className="bp-preview">
+            <span className="bp-preview-value">{sys}/{dia} mmHg</span>
           </div>
-
-          {/* Very high BP warning */}
-          {crisis && (
-            <div className="crisis-warning">
-              ⚠️ <strong>Mycket högt tryck – ta om mätningen!</strong>
-              <br/>Vila 5 minuter och mät igen. Om trycket kvarstår högt – kontakta din vårdgivare.
-            </div>
-          )}
 
           {/* Pulse – optional */}
           <div className="pulse-opt-row">
@@ -217,22 +200,8 @@ export default function RegisterView({ onDataChange, refreshKey }) {
           <button type="submit" className={`btn-save ${saved ? 'btn-saved' : ''}`} disabled={saving}>
             {saved ? '✓ Sparat!' : saving ? 'Sparar...' : 'Spara mätning'}
           </button>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, textAlign: 'center' }}>
-            För bästa tillförlitlighet, gör minst två mätningar både morgon och kväll (★★★).
-          </p>
         </form>
       </div>
-
-      {/* Measurement frequency tip */}
-      {showMeasureTip && (
-        <div className="measure-tip-card">
-          <span className="measure-tip-icon">✅</span>
-          <div className="measure-tip-text">
-            <strong>Bra nivåer!</strong> När trycket är stabilt räcker det med 1–2 mätningar per månad (morgon + kväll).
-            Mät tätare de sista veckorna inför årskontrollen.
-          </div>
-        </div>
-      )}
 
       {/* Averages summary card */}
       {(today || avg14 || avg30) && (
@@ -242,22 +211,11 @@ export default function RegisterView({ onDataChange, refreshKey }) {
           {/* Today – largest */}
           {today ? (
             <div className="avg-row avg-row-today">
-              <div className="avg-period">
-                Idag
-                <span style={{ fontSize: 12, marginLeft: 4 }} title="Tillförlitlighetsstjärnor">
-                  {'★'.repeat(getReliabilityStars(todayMs))}{'☆'.repeat(3 - getReliabilityStars(todayMs))}
-                </span>
-              </div>
-              <div className="avg-value" style={{ color: classifyBP(today.avgSys, today.avgDia).color }}>
+              <div className="avg-period">Idag</div>
+              <div className="avg-value">
                 {today.avgSys}/{today.avgDia}
                 <span className="avg-unit"> mmHg</span>
               </div>
-              <span className="avg-cat" style={{
-                background: classifyBP(today.avgSys, today.avgDia).bg,
-                color: classifyBP(today.avgSys, today.avgDia).color
-              }}>
-                {classifyBP(today.avgSys, today.avgDia).label}
-              </span>
               <span className="avg-count">{today.count} mätning{today.count !== 1 ? 'ar' : ''}</span>
             </div>
           ) : (
@@ -272,16 +230,10 @@ export default function RegisterView({ onDataChange, refreshKey }) {
           {avg14 && (
             <div className="avg-row avg-row-14">
               <div className="avg-period">14 dagar</div>
-              <div className="avg-value" style={{ color: classifyBP(avg14.sys, avg14.dia).color }}>
+              <div className="avg-value">
                 {avg14.sys}/{avg14.dia}
                 <span className="avg-unit"> mmHg</span>
               </div>
-              <span className="avg-cat" style={{
-                background: classifyBP(avg14.sys, avg14.dia).bg,
-                color: classifyBP(avg14.sys, avg14.dia).color
-              }}>
-                {classifyBP(avg14.sys, avg14.dia).label}
-              </span>
               <span className="avg-count">{avg14.count} mätningar</span>
             </div>
           )}
@@ -290,16 +242,10 @@ export default function RegisterView({ onDataChange, refreshKey }) {
           {avg30 && (
             <div className="avg-row avg-row-30">
               <div className="avg-period">30 dagar</div>
-              <div className="avg-value" style={{ color: classifyBP(avg30.sys, avg30.dia).color }}>
+              <div className="avg-value">
                 {avg30.sys}/{avg30.dia}
                 <span className="avg-unit"> mmHg</span>
               </div>
-              <span className="avg-cat" style={{
-                background: classifyBP(avg30.sys, avg30.dia).bg,
-                color: classifyBP(avg30.sys, avg30.dia).color
-              }}>
-                {classifyBP(avg30.sys, avg30.dia).label}
-              </span>
               <span className="avg-count">{avg30.count} mätningar</span>
             </div>
           )}
@@ -325,17 +271,6 @@ export default function RegisterView({ onDataChange, refreshKey }) {
             Idag
             {today && today.count >= 2 && (
               <span className="card-title-sub"> – snitt {today.avgSys}/{today.avgDia}</span>
-            )}
-            {todayMs.length > 0 && (
-              <span style={{ marginLeft: 8, fontSize: 14 }} title={
-                getReliabilityStars(todayMs) === 3
-                  ? 'Utmärkt tillförlitlighet: 2+ mätningar morgon & kväll'
-                  : getReliabilityStars(todayMs) === 2
-                  ? 'God tillförlitlighet: mätning morgon & kväll'
-                  : 'Begränsad tillförlitlighet: mätning vid ett tillfälle'
-              }>
-                {'★'.repeat(getReliabilityStars(todayMs))}{'☆'.repeat(3 - getReliabilityStars(todayMs))}
-              </span>
             )}
           </h3>
           <div className="measurements-list">
@@ -375,11 +310,9 @@ export default function RegisterView({ onDataChange, refreshKey }) {
 }
 
 function MeasurementRow({ m, onDelete }) {
-  const color = getBPColor(m.sys, m.dia)
-  const bg = getBPBg(m.sys, m.dia)
   return (
     <div className="measurement-row">
-      <div className="measurement-bp" style={{ color }}>
+      <div className="measurement-bp">
         {m.sys}/{m.dia}
       </div>
       <div className="measurement-meta">
@@ -388,9 +321,6 @@ function MeasurementRow({ m, onDelete }) {
         {m.pulse && <span className="measurement-pulse">♥ {m.pulse}</span>}
         {m.note && <span className="measurement-note">📝 {m.note}</span>}
       </div>
-      <span className="measurement-cat" style={{ background: bg, color }}>
-        {classifyBP(m.sys, m.dia).label}
-      </span>
       <button className="btn-delete" onClick={() => onDelete(m.id)} title="Ta bort">×</button>
     </div>
   )

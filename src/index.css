@@ -48,6 +48,11 @@ html, body, #root { height: 100%; }
   z-index: 100;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
+.disclaimer-banner { background: #fefce8; border-bottom: 2px solid #fde047; padding: 10px 16px; display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
+.disclaimer-body { flex: 1; font-size: 13px; color: #713f12; line-height: 1.5; }
+.disclaimer-body strong { display: block; font-size: 14px; margin-bottom: 4px; }
+.disclaimer-body p { margin: 0; }
+.disclaimer-close { flex-shrink: 0; background: #a16207; color: white; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
 .app-header-inner {
   display: flex;

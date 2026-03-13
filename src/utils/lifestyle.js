@@ -272,15 +272,15 @@ export function getSmokingFromLifestyle(answers) {
 }
 
 export function getScoreLabel(score) {
-  if (score >= 80) return { label: 'Utmärkta levnadsvanor', color: '#16a34a' }
-  if (score >= 60) return { label: 'Bra, med förbättringspotential', color: '#65a30d' }
-  if (score >= 40) return { label: 'Det finns utrymme att förändra', color: '#ca8a04' }
-  return { label: 'Viktigt att ta tag i', color: '#dc2626' }
+  if (score >= 80) return { label: 'Högt resultat', color: '#16a34a' }
+  if (score >= 60) return { label: 'Mellanhögt resultat', color: '#65a30d' }
+  if (score >= 40) return { label: 'Lägre resultat', color: '#ca8a04' }
+  return { label: 'Lågt resultat', color: '#64748b' }
 }
 
 export function getScoreFeedback(score) {
-  if (score >= 80) return 'Dina levnadsvanor är riktigt bra den här månaden. Fortsätt så!'
-  if (score >= 60) return 'Du gör mycket rätt — en eller två saker kan förbättras.'
-  if (score >= 40) return 'Prata med din läkare om vilken förändring som ger mest effekt.'
-  return 'Dina levnadsvanor ökar din hälsorisk. Det går att vända!'
+  if (score >= 80) return 'Högt resultat den här månaden.'
+  if (score >= 60) return 'Mellanhögt resultat.'
+  if (score >= 40) return 'Lägre resultat.'
+  return 'Lågt resultat.'
 }

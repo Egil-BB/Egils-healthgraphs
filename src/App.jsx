@@ -13,7 +13,7 @@ import SettingsView from './views/SettingsView'
 import DiaryView from './views/DiaryView'
 import MictView from './views/MictView'
 import PainView from './views/PainView'
-import { getAllLifestyle, getProfile } from './db/db'
+import { getProfile } from './db/db'
 import { DEFAULT_ENABLED_IDS, buildEnabledTabs, buildRegisterSubTabs } from './utils/modules'
 
 const REGISTER_CORE_TABS = [
@@ -23,11 +23,35 @@ const REGISTER_CORE_TABS = [
   { id: 'lifestyle', label: 'Levnadsvanor' },
 ]
 
+function DisclaimerBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem('disclaimer_v1') === '1' } catch { return false }
+  })
+  if (dismissed) return null
+  return (
+    <div className="disclaimer-banner">
+      <div className="disclaimer-body">
+        <strong>Personligt loggverktyg</strong>
+        <p>
+          Appen hjälper dig att anteckna egna värden och se dem i grafer.
+          Den är <strong>inte</strong> en medicinsk produkt och ger ingen medicinsk rådgivning.
+          All data lagras lokalt på din enhet – inget skickas till någon server.
+          Beslut om hälsa tas alltid tillsammans med din vårdgivare.
+          <em> Tillhandahålls i befintligt skick, utan garanti.</em>
+        </p>
+      </div>
+      <button className="disclaimer-close" onClick={() => {
+        try { localStorage.setItem('disclaimer_v1', '1') } catch {}
+        setDismissed(true)
+      }}>OK, förstått</button>
+    </div>
+  )
+}
+
 export default function App() {
   const [tab, setTab] = useState('register')
   const [refreshKey, setRefreshKey] = useState(0)
   const [registerSubTab, setRegisterSubTab] = useState('bp')
-  const [lifestyleStatus, setLifestyleStatus] = useState('ok') // ok | warn | danger
   const [enabledModules, setEnabledModules] = useState(DEFAULT_ENABLED_IDS)
 
   useEffect(() => {
@@ -40,35 +64,12 @@ export default function App() {
     setRefreshKey(k => k + 1)
   }, [])
 
-  const checkLifestyle = useCallback(async () => {
-    const all = await getAllLifestyle()
-    if (all.length === 0) {
-      setLifestyleStatus('warn')
-      return
-    }
-    const latest = all.sort((a, b) => b.date.localeCompare(a.date))[0]
-    const daysSince = Math.floor((new Date() - new Date(latest.date + 'T12:00:00')) / (1000 * 60 * 60 * 24))
-    if (daysSince > 90) setLifestyleStatus('danger')
-    else if (daysSince > 30) setLifestyleStatus('warn')
-    else setLifestyleStatus('ok')
-  }, [])
-
-  useEffect(() => { checkLifestyle() }, [checkLifestyle, refreshKey])
-
-  const notifications = {}
-  if (lifestyleStatus !== 'ok') notifications.register = lifestyleStatus
-
-  function handleLifestyleDataChange() {
-    handleDataChange()
-    checkLifestyle()
-  }
-
   return (
     <div className="app">
       <header className="app-header">
         <div className="app-header-inner">
           <span className="app-logo">💓</span>
-          <h1 className="app-title">Hälsostödet</h1>
+          <h1 className="app-title">Min Hälsologg</h1>
           <button
             className="settings-btn"
             onClick={() => setTab(tab === 'settings' ? 'register' : 'settings')}
@@ -78,6 +79,8 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <DisclaimerBanner />
 
       <main className="app-main">
         {tab === 'register' && (() => {
@@ -96,9 +99,6 @@ export default function App() {
                     onClick={() => setRegisterSubTab(t.id)}
                   >
                     {t.label}
-                    {t.id === 'lifestyle' && lifestyleStatus !== 'ok' && (
-                      <span className={`tab-status-dot dot-${lifestyleStatus}`}>●</span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -112,7 +112,7 @@ export default function App() {
                 <WeightView onDataChange={handleDataChange} refreshKey={refreshKey} />
               )}
               {registerSubTab === 'lifestyle' && (
-                <LifestyleView onDataChange={handleLifestyleDataChange} />
+                <LifestyleView onDataChange={handleDataChange} />
               )}
               {registerSubTab === 'diary' && (
                 <DiaryView onDataChange={handleDataChange} />
@@ -145,7 +145,7 @@ export default function App() {
 
         {tab === 'settings' && (
           <SettingsView
-            onDataChange={handleLifestyleDataChange}
+            onDataChange={handleDataChange}
             enabledModules={enabledModules}
             setEnabledModules={setEnabledModules}
           />
@@ -154,7 +154,7 @@ export default function App() {
 
       <InstallBanner />
       {tab !== 'settings' && (
-        <NavBar active={tab} onNav={setTab} notifications={notifications} tabs={buildEnabledTabs(enabledModules)} />
+        <NavBar active={tab} onNav={setTab} notifications={{}} tabs={buildEnabledTabs(enabledModules)} />
       )}
       {tab === 'settings' && (
         <nav className="navbar">
