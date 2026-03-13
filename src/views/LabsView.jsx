@@ -169,28 +169,11 @@ function LabChart({ type, labs }) {
     }
   ]
 
-  if (typeData.refMax != null) {
-    datasets.push({
-      label: `Övre gräns (${typeData.refMax})`,
-      data: data.map(() => typeData.refMax),
-      borderColor: 'rgba(220, 38, 38, 0.5)',
-      borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0,
-    })
-  }
-  if (typeData.refMin != null) {
-    datasets.push({
-      label: `Nedre gräns (${typeData.refMin})`,
-      data: data.map(() => typeData.refMin),
-      borderColor: 'rgba(22, 163, 74, 0.5)',
-      borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0,
-    })
-  }
-
   const options = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: { display: datasets.length > 1, position: 'bottom', labels: { boxWidth: 14, font: { size: 11 }, padding: 8 } },
-      tooltip: { callbacks: { label: item => item.datasetIndex === 0 ? `${item.raw} ${typeData.unit}` : item.dataset.label } }
+      legend: { display: false },
+      tooltip: { callbacks: { label: item => `${item.raw} ${typeData.unit}` } }
     },
     scales: {
       x: { ticks: { font: { size: 11 }, maxRotation: 30 }, grid: { color: 'rgba(0,0,0,0.06)' } },
@@ -199,15 +182,12 @@ function LabChart({ type, labs }) {
   }
 
   const latest = data[data.length - 1]
-  const isAboveMax = typeData.refMax != null && latest.value > typeData.refMax
-  const isBelowMin = typeData.refMin != null && latest.value < typeData.refMin
-  const valueColor = (isAboveMax || isBelowMin) ? '#dc2626' : '#16a34a'
 
   return (
     <div className="card lab-chart-card">
       <div className="lab-chart-header">
         <span className="lab-chart-title">{typeData.label}</span>
-        <span className="lab-chart-latest" style={{ color: valueColor }}>
+        <span className="lab-chart-latest">
           {latest.value} {typeData.unit}
         </span>
       </div>
@@ -325,7 +305,7 @@ export default function LabsView({ onDataChange }) {
             <button className="btn-add" onClick={() => setShowForm(true)}>+ Lägg till</button>
           )}
         </div>
-        <p className="card-desc">Blodprovsvärden används i SCORE2-riskberäkning.</p>
+        <p className="card-desc">Logga blodprovsvärden för att se dem som grafer över tid.</p>
         <div className="import-1177-section">
           <button className="btn-import-1177" onClick={() => fileRef.current?.click()}>
             ⬆ Importera provsvar från 1177 (.xlsx)

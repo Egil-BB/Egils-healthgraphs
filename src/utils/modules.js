@@ -25,12 +25,12 @@ export const ALL_MODULES = [
   },
   {
     id: 'score',
-    label: 'Risk',
-    icon: '🎯',
+    label: 'Översikt',
+    icon: '📋',
     alwaysOn: false,
     defaultOn: true,
     registerSubTab: false,
-    desc: 'SCORE2 kardiovaskulär 10-årsrisk och BMI',
+    desc: 'Senaste inmatade värden per kategori',
   },
   {
     id: 'meds',
@@ -75,7 +75,7 @@ export const ALL_MODULES = [
     alwaysOn: false,
     defaultOn: true,
     registerSubTab: false,
-    desc: 'Hälsoinformation och kunskapsbank',
+    desc: 'Externa länkar och information om appen',
   },
 ]
 

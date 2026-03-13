@@ -94,12 +94,7 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
     }
   })
 
-  // Systolic reference lines
-  annotations.t130 = { type: 'line', yMin: 130, yMax: 130, borderColor: 'rgba(22,163,74,0.5)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: '130', position: 'end', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
-  annotations.t140 = { type: 'line', yMin: 140, yMax: 140, borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1, borderDash: [4, 4], label: { display: true, content: '140', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
-  // Diastolic reference lines
-  annotations.d80 = { type: 'line', yMin: 80, yMax: 80, borderColor: 'rgba(22,163,74,0.35)', borderWidth: 1, borderDash: [3, 5], label: { display: true, content: '80', position: 'start', font: { size: 10 }, color: '#16a34a', backgroundColor: 'transparent' } }
-  annotations.d90 = { type: 'line', yMin: 90, yMax: 90, borderColor: 'rgba(220,38,38,0.35)', borderWidth: 1, borderDash: [3, 5], label: { display: true, content: '90', position: 'start', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
+
 
   const datasets = [
     { label: 'Systoliskt', data: filled.map(d => d.avgSys), borderColor: '#1d4ed8', backgroundColor: 'rgba(29,78,216,0.08)', borderWidth: 2, pointRadius: filled.map(d => d.count > 0 ? 3 : 0), pointHoverRadius: 6, spanGaps: false, tension: 0.2, fill: false, order: 2 },
@@ -152,10 +147,6 @@ function BPGraph({ measurements, medications, period, setPeriod }) {
       </div>
       <div className="card chart-card">
         <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
-        <div className="chart-legend-zones">
-          <span className="zone-chip" style={{ background: '#dcfce7', color: '#16a34a' }}>--- 130/80 optimal</span>
-          <span className="zone-chip" style={{ background: '#fee2e2', color: '#dc2626' }}>--- 140/90 förhöjt</span>
-        </div>
       </div>
       {filtered.length > 0 && (
         <div className="card">
@@ -211,18 +202,15 @@ function CholesterolGraph({ labs, medications }) {
       label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 4 + stagger * 28 }
     }
   })
-  annotations.refLine = { type: 'line', yMin: 3.4, yMax: 3.4, borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [5, 5], label: { display: true, content: '3,4', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
-
   const datasets = [
     { label: 'Non-HDL', data: points.map(p => p.nonHdl), borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.1)', borderWidth: 2.5, pointRadius: 5, pointHoverRadius: 7, tension: 0.2, fill: false },
-    { label: 'Gräns 3,4', data: points.map(() => 3.4), borderColor: 'rgba(220,38,38,0.4)', borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0, tension: 0 }
   ]
 
   const options = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 12 }, padding: 10 } },
-      tooltip: { callbacks: { label: item => item.datasetIndex === 0 ? `Non-HDL: ${item.raw} mmol/L` : 'Gräns 3,4 mmol/L' } },
+      tooltip: { callbacks: { label: item => `Non-HDL: ${item.raw} mmol/L` } },
       annotation: { annotations }
     },
     scales: {
@@ -232,17 +220,16 @@ function CholesterolGraph({ labs, medications }) {
   }
 
   const latest = points[points.length - 1]
-  const isHigh = latest.nonHdl > 3.4
 
   return (
     <div className="card chart-card">
       <div className="chol-header">
         <span className="card-title">Non-HDL-kolesterol</span>
-        <span style={{ color: isHigh ? '#dc2626' : '#16a34a', fontWeight: 700 }}>
-          Senast: {latest.nonHdl} mmol/L {isHigh ? '↑' : '✓'}
+        <span style={{ fontWeight: 700 }}>
+          Senast: {latest.nonHdl} mmol/L
         </span>
       </div>
-      <p className="card-desc">Non-HDL = totalkolesterol − HDL. Mål: &lt;3,4 mmol/L. Statiner och ezetimib markeras.</p>
+      <p className="card-desc">Non-HDL = totalkolesterol − HDL. Statiner och ezetimib markeras.</p>
       <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
     </div>
   )
@@ -306,9 +293,6 @@ function GlucoseGraph({ labs, medications }) {
       label: { display: true, content: med.dose ? `${med.name} ${med.dose}` : med.name, position: 'end', backgroundColor: medColors[i % medColors.length], color: 'white', font: { size: 11 }, padding: { x: 6, y: 3 }, borderRadius: 4, yAdjust: 4 + stagger * 28 }
     }
   })
-  if (glucosePoints.length > 0) {
-    annotations.gluRef = { type: 'line', yMin: 6.1, yMax: 6.1, borderColor: 'rgba(220,38,38,0.4)', borderWidth: 1.5, borderDash: [5, 5], label: { display: true, content: '6,1', position: 'end', font: { size: 10 }, color: '#dc2626', backgroundColor: 'transparent' } }
-  }
 
   const options = {
     responsive: true, maintainAspectRatio: false,
@@ -332,11 +316,11 @@ function GlucoseGraph({ labs, medications }) {
       <div className="chol-header">
         <span className="card-title">Blodsocker</span>
         <span style={{ fontWeight: 700, fontSize: 13 }}>
-          {latestGlu && <span style={{ color: latestGlu.value > 6.1 ? '#dc2626' : '#16a34a' }}>Glukos: {latestGlu.value} </span>}
-          {latestHba1c && <span style={{ color: latestHba1c.value > 48 ? '#dc2626' : '#16a34a' }}>HbA1c: {latestHba1c.value}</span>}
+          {latestGlu && <span>Glukos: {latestGlu.value} </span>}
+          {latestHba1c && <span>HbA1c: {latestHba1c.value}</span>}
         </span>
       </div>
-      <p className="card-desc">Fasteplasmaglukos mål &lt;6,1 mmol/L · HbA1c mål &lt;48 mmol/mol. Diabetesmediciner markeras.</p>
+      <p className="card-desc">Diabetesmediciner markeras.</p>
       <div className="chart-wrapper"><Line data={{ labels, datasets }} options={options} /></div>
     </div>
   )
@@ -1046,13 +1030,10 @@ function PainGraph({ painEntries }) {
 
 // ── Combined mini-charts ──────────────────────────────────────────────────────
 
-function MiniLine({ data, labels, color, unit, refLine, title, latest, latestColor }) {
+function MiniLine({ data, labels, color, unit, title, latest, latestColor }) {
   const datasets = [
     { data, borderColor: color, backgroundColor: color + '15', borderWidth: 2, pointRadius: 2, tension: 0.2, fill: false }
   ]
-  if (refLine != null) {
-    datasets.push({ data: data.map(() => refLine), borderColor: 'rgba(220,38,38,0.4)', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, tension: 0 })
-  }
 
   const options = {
     responsive: true, maintainAspectRatio: false,
@@ -1144,9 +1125,7 @@ function CombinedGraph({ measurements, labs, weights, lifestyle, heightCm }) {
         labels={bpLabels}
         color="#1d4ed8"
         unit="mmHg"
-        refLine={130}
         latest={latestSys ? `${latestSys} mmHg` : null}
-        latestColor={latestSys > 140 ? '#dc2626' : latestSys > 130 ? '#ca8a04' : '#16a34a'}
       />
       <MiniLine
         title="Non-HDL-kolesterol"
@@ -1154,9 +1133,7 @@ function CombinedGraph({ measurements, labs, weights, lifestyle, heightCm }) {
         labels={cholPoints.map(p => dateLabel(p.date, true))}
         color="#7c3aed"
         unit="mmol/L"
-        refLine={3.4}
         latest={latestNonHdl ? `${latestNonHdl} mmol/L` : null}
-        latestColor={latestNonHdl > 3.4 ? '#dc2626' : '#16a34a'}
       />
       <MiniLine
         title="Vikt (90d)"
